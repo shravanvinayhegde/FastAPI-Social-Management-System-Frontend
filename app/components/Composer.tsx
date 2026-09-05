@@ -1,30 +1,36 @@
 "use client";
 
 import React, { FormEvent, useEffect, useState } from "react";
-import { createPost, getCurrentUserId, getUser } from "../../lib/api";
+import { createPost, getCurrentUserId, getUser, PostEntity } from "../../lib/api";
 import Avatar from "./Avatar";
 
 type ComposerProps = {
-  onCreate: (post: any) => void;
+  onCreate: (post: PostEntity) => void;
 };
 
 export default function Composer({ onCreate }: ComposerProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const [user, setUser] = useState<{ id: number; email: string } | null>(null);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!title || !content) return;
+    if (!title.trim() || !content.trim()) return;
     setIsSubmitting(true);
+    setError("");
     try {
-      const created = await createPost(title, content, true);
+      const created = await createPost(title.trim(), content.trim(), true, { image_url: imageUrl.trim() || null, video_url: videoUrl.trim() || null });
       onCreate(created);
       setTitle("");
       setContent("");
+      setImageUrl("");
+      setVideoUrl("");
     } catch (err) {
-      // swallow — parent can refresh
+      setError(err instanceof Error ? err.message : "Unable to create post.");
     } finally {
       setIsSubmitting(false);
     }
@@ -58,6 +64,11 @@ export default function Composer({ onCreate }: ComposerProps) {
             placeholder="What's happening?"
             className="mt-2 w-full resize-none rounded-md border border-white/10 bg-transparent px-3 py-2 text-white outline-none focus-visible"
           />
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <input type="url" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="Image URL (optional)" className="vf-input" />
+            <input type="url" value={videoUrl} onChange={(event) => setVideoUrl(event.target.value)} placeholder="Video URL (optional)" className="vf-input" />
+          </div>
+          {error ? <p className="mt-2 text-sm text-rose-300">{error}</p> : null}
 
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-3 text-slate-300">

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { vote } from "../../lib/api";
+import { sharePost, vote } from "../../lib/api";
 import VoteRail from "./VoteRail";
 import Avatar from "./Avatar";
 
@@ -14,9 +14,12 @@ type PostCardProps = {
   postedBy: string;
   postedAt: string;
   ownerId?: number;
+  ownerUsername?: string | null;
   isOwner?: boolean;
   onDelete?: (postId: number) => Promise<void>;
   onUpdate?: (postId: number, title: string, content: string) => Promise<void>;
+  imageUrl?: string | null;
+  videoUrl?: string | null;
 };
 
 export default function PostCard({
@@ -27,9 +30,12 @@ export default function PostCard({
   postedBy,
   postedAt,
   ownerId,
+  ownerUsername,
   isOwner = false,
   onDelete,
   onUpdate,
+  imageUrl,
+  videoUrl,
 }: PostCardProps) {
   const [currentVotes, setCurrentVotes] = useState(votes);
   const [isVoting, setIsVoting] = useState(false);
@@ -39,6 +45,8 @@ export default function PostCard({
   const [editTitle, setEditTitle] = useState(title);
   const [editContent, setEditContent] = useState(content);
   const [error, setError] = useState("");
+  const [shareCount, setShareCount] = useState(0);
+  const [isShared, setIsShared] = useState(false);
 
   const handleVote = async (dir: 0 | 1) => {
     if (isVoting) {
@@ -56,6 +64,16 @@ export default function PostCard({
       setError(message);
     } finally {
       setIsVoting(false);
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      const result = await sharePost(postId);
+      setIsShared(result.shared);
+      setShareCount(result.share_count);
+    } catch (shareError) {
+      setError(shareError instanceof Error ? shareError.message : "Unable to share post.");
     }
   };
 
@@ -114,7 +132,7 @@ export default function PostCard({
               <div className="flex items-center gap-3">
                 <Avatar email={postedBy} size={40} />
                 <div>
-                  {ownerId ? <Link href={`/u/${ownerId}`} className="text-sm font-semibold text-white hover:text-[hsl(var(--accent))]">{postedBy.split("@")[0].replace(/[._-]/g, " ").replace(/(^|\s)\S/g, (t) => t.toUpperCase())}</Link> : <h3 className="text-sm font-semibold text-white">{postedBy}</h3>}
+                  {ownerId ? <Link href={ownerUsername ? `/profile/${encodeURIComponent(ownerUsername)}` : `/u/${ownerId}`} className="text-sm font-semibold text-white hover:text-[hsl(var(--accent))]">{postedBy.split("@")[0].replace(/[._-]/g, " ").replace(/(^|\s)\S/g, (t) => t.toUpperCase())}</Link> : <h3 className="text-sm font-semibold text-white">{postedBy}</h3>}
                   <div className="text-xs text-slate-400">@{postedBy.split("@")[0]} • {postedAt}</div>
                 </div>
               </div>
@@ -178,6 +196,8 @@ export default function PostCard({
               <div className="mt-3">
                 <h2 className="text-lg font-semibold leading-snug text-white">{title}</h2>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{content}</p>
+                {imageUrl ? <img src={imageUrl} alt="Post media" loading="lazy" className="mt-4 max-h-[28rem] w-full rounded-lg object-cover" /> : null}
+                {videoUrl ? <video src={videoUrl} controls className="mt-4 max-h-[28rem] w-full rounded-lg" /> : null}
               </div>
 
               {/* mobile vote rail (bottom left) */}
@@ -192,7 +212,7 @@ export default function PostCard({
             </>
           )}
 
-          {!isEditing ? <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-white/10 pt-3 text-xs text-slate-500"><button type="button" className="hover:text-[hsl(var(--accent))]" aria-label="Comment on post">Comment</button><button type="button" className="hover:text-[hsl(var(--accent))]" aria-label="Share post">Share</button><span className="ml-auto">{postedAt}</span></div> : null}
+          {!isEditing ? <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-white/10 pt-3 text-xs text-slate-500"><button type="button" className="hover:text-[hsl(var(--accent))]" aria-label="Comment on post">Comment</button><button type="button" onClick={() => void handleShare()} className={isShared ? "text-[hsl(var(--accent))]" : "hover:text-[hsl(var(--accent))]"} aria-label="Share post">{isShared ? "Shared" : "Share"}{shareCount ? ` · ${shareCount}` : ""}</button><span className="ml-auto">{postedAt}</span></div> : null}
 
           {error ? <p className="mt-3 text-xs text-rose-300">{error}</p> : null}
         </div>

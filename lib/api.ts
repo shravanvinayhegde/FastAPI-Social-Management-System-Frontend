@@ -24,16 +24,10 @@ export type UserOut = {
   show_communities?: boolean;
 };
 
-export type ProfileUpdate = {
-  display_name?: string;
-  bio?: string;
-  show_posts?: boolean;
-  show_communities?: boolean;
-  profile_visibility?: "public" | "private";
-};
-
 export type FollowStatus = {
   following: boolean;
+  follower_count: number;
+  following_count: number;
 };
 
 export type Community = {
@@ -43,8 +37,31 @@ export type Community = {
   description?: string | null;
   creator_id?: number | null;
   created_at?: string | null;
+  updated_at?: string | null;
   member_count?: number;
   is_member?: boolean;
+};
+
+export type ProfileResponse = {
+  user: {
+    id: number;
+    username: string;
+    display_name: string;
+    bio: string | null;
+    avatar_url: string;
+    created_at: string;
+  };
+  stats: { followers: number; following: number; posts: number; communities: number };
+  relationship: { is_following: boolean; is_followed_by: boolean };
+  privacy: { visibility: string; show_posts: boolean; show_communities: boolean };
+};
+
+export type ProfileUpdate = {
+  display_name?: string;
+  bio?: string | null;
+  profile_visibility?: "public" | "private";
+  show_posts?: boolean;
+  show_communities?: boolean;
 };
 
 export type Reply = {
@@ -68,10 +85,10 @@ export type Message = {
 
 export type Conversation = {
   id: number;
-  created_at?: string | null;
-  other_user?: UserOut | null;
-  last_message?: Message | null;
-  unread_count?: number;
+  user_one_id: number;
+  user_two_id: number;
+  created_at: string;
+  updated_at: string;
 };
 
 export type Notification = {
@@ -81,7 +98,7 @@ export type Notification = {
   type: string;
   entity_type: string | null;
   entity_id: number | null;
-  payload: Record<string, unknown> | null;
+  payload: string;
   is_read: boolean;
   created_at: string;
 };
@@ -103,6 +120,8 @@ export type PostWithVotes = {
   Post: PostEntity;
   votes: number;
 };
+
+export type ShareResult = { post_id: number; shared: boolean; share_count: number };
 
 export class ApiError extends Error {
   constructor(
@@ -272,6 +291,10 @@ export async function getPosts(options: GetPostsOptions = {}): Promise<PostWithV
   return request<PostWithVotes[]>(path, { method: "GET" }, { auth: true, json: true });
 }
 
+export async function sharePost(postId: number): Promise<ShareResult> {
+  return request<ShareResult>(`/posts/${postId}/share`, { method: "POST" }, { auth: true, json: true });
+}
+
 export async function createPost(
   title: string,
   content: string,
@@ -308,12 +331,12 @@ export async function getFollowStatus(userId: number): Promise<FollowStatus> {
   return request<FollowStatus>(`/users/${userId}/follow-status`, { method: "GET" }, { auth: true, json: true });
 }
 
-export async function followUser(userId: number): Promise<unknown> {
-  return request<unknown>(`/users/${userId}/follow`, { method: "POST" }, { auth: true, json: true });
+export async function followUser(userId: number): Promise<FollowStatus> {
+  return request<FollowStatus>(`/users/${userId}/follow`, { method: "POST" }, { auth: true, json: true });
 }
 
-export async function unfollowUser(userId: number): Promise<unknown> {
-  return request<unknown>(`/users/${userId}/follow`, { method: "DELETE" }, { auth: true, json: true });
+export async function unfollowUser(userId: number): Promise<FollowStatus> {
+  return request<FollowStatus>(`/users/${userId}/follow`, { method: "DELETE" }, { auth: true, json: true });
 }
 
 export type GetUsersOptions = { skip?: number; limit?: number };
@@ -345,11 +368,19 @@ export async function createReply(postId: number, content: string, parentId: num
   );
 }
 
+export async function updateReply(replyId: number, content: string, parentId: number | null = null): Promise<Reply> {
+  return request<Reply>(`/posts/replies/${replyId}`, { method: "PATCH", body: JSON.stringify({ content, parent_id: parentId }) }, { auth: true, json: true });
+}
+
+export async function deleteReply(replyId: number): Promise<void> {
+  await request<unknown>(`/posts/replies/${replyId}`, { method: "DELETE" }, { auth: true, json: true });
+}
+
 export type GetCommunitiesOptions = { search?: string; skip?: number; limit?: number; sort?: string };
 
 export async function getCommunities(options: GetCommunitiesOptions = {}): Promise<Community[]> {
   const params = new URLSearchParams();
-  Object.entries(options).forEach(([key, value]) => {
+  Object.entries(options).filter(([key]) => key !== "sort").forEach(([key, value]) => {
     if (value !== undefined && value !== "") params.set(key, String(value));
   });
   const query = params.toString();
@@ -381,11 +412,65 @@ export async function getCommunityPosts(communityId: number, options: GetPostsOp
   return request<PostWithVotes[]>(`/communities/${communityId}/posts${query ? `?${query}` : ""}`, { method: "GET" }, { auth: true, json: true });
 }
 
+export async function getProfile(username: string): Promise<ProfileResponse> {
+  return request<ProfileResponse>(`/users/${encodeURIComponent(username)}/profile`, { method: "GET" }, { auth: false, json: true });
+}
+
+export async function getProfilePosts(username: string, options: GetUsersOptions = {}): Promise<PostWithVotes[]> {
+  const params = new URLSearchParams();
+  if (options.skip !== undefined) params.set("skip", String(options.skip));
+  if (options.limit !== undefined) params.set("limit", String(options.limit));
+  return request<PostWithVotes[]>(`/users/${encodeURIComponent(username)}/posts?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
+}
+
+export async function getProfileFollowers(username: string, options: GetUsersOptions = {}): Promise<UserOut[]> {
+  return getProfileUsers(username, "followers", options);
+}
+
+export async function getProfileFollowing(username: string, options: GetUsersOptions = {}): Promise<UserOut[]> {
+  return getProfileUsers(username, "following", options);
+}
+
+async function getProfileUsers(username: string, relation: "followers" | "following", options: GetUsersOptions): Promise<UserOut[]> {
+  const params = new URLSearchParams();
+  if (options.skip !== undefined) params.set("skip", String(options.skip));
+  if (options.limit !== undefined) params.set("limit", String(options.limit));
+  return request<UserOut[]>(`/users/${encodeURIComponent(username)}/${relation}?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
+}
+
+export async function getProfileCommunities(username: string, options: GetUsersOptions = {}): Promise<Community[]> {
+  const params = new URLSearchParams();
+  if (options.skip !== undefined) params.set("skip", String(options.skip));
+  if (options.limit !== undefined) params.set("limit", String(options.limit));
+  return request<Community[]>(`/users/${encodeURIComponent(username)}/communities?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
+}
+
+export async function updateMyProfile(update: ProfileUpdate): Promise<UserOut> {
+  return request<UserOut>("/users/me/profile", { method: "PATCH", body: JSON.stringify(update) }, { auth: true, json: true });
+}
+
+export async function uploadAvatar(file: File): Promise<ProfileResponse> {
+  const body = new FormData();
+  body.append("file", file);
+  return request<ProfileResponse>("/users/me/avatar", { method: "POST", body }, { auth: true, json: false });
+}
+
+export async function deleteAvatar(): Promise<ProfileResponse> {
+  return request<ProfileResponse>("/users/me/avatar", { method: "DELETE" }, { auth: true, json: true });
+}
+
 export async function getMyCommunities(options: GetUsersOptions = {}): Promise<Community[]> {
   const params = new URLSearchParams();
   if (options.skip !== undefined) params.set("skip", String(options.skip));
   if (options.limit !== undefined) params.set("limit", String(options.limit));
   return request<Community[]>(`/users/me/communities?${params.toString()}`, { method: "GET" }, { auth: true, json: true });
+}
+
+export async function getCommunityMembers(communityId: number, options: GetUsersOptions = {}): Promise<UserOut[]> {
+  const params = new URLSearchParams();
+  if (options.skip !== undefined) params.set("skip", String(options.skip));
+  if (options.limit !== undefined) params.set("limit", String(options.limit));
+  return request<UserOut[]>(`/communities/${communityId}/members?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
 }
 
 export async function getConversations(): Promise<Conversation[]> {
@@ -409,6 +494,14 @@ export async function getMessages(conversationId: number, options: GetUsersOptio
 
 export async function sendMessage(conversationId: number, content: string): Promise<Message> {
   return request<Message>(`/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify({ content }) }, { auth: true, json: true });
+}
+
+export async function updateMessage(messageId: number, content: string): Promise<Message> {
+  return request<Message>(`/messages/${messageId}`, { method: "PATCH", body: JSON.stringify({ content }) }, { auth: true, json: true });
+}
+
+export async function deleteMessage(messageId: number): Promise<void> {
+  await request<unknown>(`/messages/${messageId}`, { method: "DELETE" }, { auth: true, json: true });
 }
 
 export async function markConversationRead(conversationId: number): Promise<unknown> {
@@ -454,6 +547,3 @@ export async function getUser(id: number): Promise<UserOut> {
   return request<UserOut>(`/users/${id}`, { method: "GET" }, { auth: true, json: true });
 }
 
-export async function updateMyProfile(update: ProfileUpdate): Promise<UserOut> {
-  return request<UserOut>("/users/me/profile", { method: "PATCH", body: JSON.stringify(update) }, { auth: true, json: true });
-}

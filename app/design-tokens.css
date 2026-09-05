@@ -57,6 +57,7 @@
 .vf-nav-link { border-radius: 6px; padding: 8px 10px; color: var(--foreground-muted); font-size: 0.82rem; font-weight: 600; }
 .vf-nav-link:hover { color: var(--foreground); background: var(--panel-highlight); }
 .vf-badge { display: inline-flex; min-width: 24px; justify-content: center; border-radius: 999px; background: hsl(var(--accent)); color: var(--accent-foreground); padding: 3px 7px; font-size: 0.72rem; font-weight: 800; }
+.vf-chip { display: inline-flex; align-items: center; border: 1px solid var(--panel-border); border-radius: 999px; padding: 8px 12px; color: var(--foreground-muted); font-size: 0.82rem; font-weight: 700; }
 .vf-sidebar-link { display: flex; width: 100%; align-items: center; gap: 10px; border-radius: 7px; padding: 11px 12px; color: var(--foreground-muted); font-size: 0.86rem; font-weight: 600; text-align: left; }
 .vf-sidebar-link:hover, .vf-sidebar-link-active { background: hsl(var(--accent) / 0.1); color: var(--foreground); }
 .vf-tabs-row { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--panel-border); padding-bottom: 10px; }

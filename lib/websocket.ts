@@ -27,7 +27,7 @@ export class ReconnectingSocket {
     if (!token || typeof window === "undefined") return;
 
     this.options.onStatus?.(this.attempts ? "reconnecting" : "connecting");
-    const url = API_URL.replace(/^http/, "ws").replace(/\/$/, "") + `/ws?token=${encodeURIComponent(token)}`;
+    const url = API_URL.replace(/^http/, "ws").replace(/\/$/, "") + `/ws/events?token=${encodeURIComponent(token)}`;
     this.socket = new WebSocket(url);
     this.socket.onopen = () => {
       this.attempts = 0;

@@ -180,7 +180,10 @@ export default function HomePage() {
                 votes={post.votes}
                 postedBy={post.Post.owner?.email ?? "Unknown user"}
                 ownerId={post.Post.owner_id}
+                ownerUsername={post.Post.owner?.username}
                 postedAt={formatPostedTime(post.Post.created_at)}
+                imageUrl={post.Post.image_url}
+                videoUrl={post.Post.video_url}
                 isOwner={currentUserId === post.Post.owner_id}
                 onDelete={handleDeletePost}
                 onUpdate={handleUpdatePost}

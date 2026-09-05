@@ -22,10 +22,15 @@ A clean, responsive **Next.js + TypeScript** frontend for the **FastAPI Social M
 ## ✨ Features
 
 - **User Authentication** — Register and log in with JWT-based auth; tokens managed client-side across sessions
-- **Community Feed** — Browse all posts from every user in one scrollable feed
+- **Community Feed** — Browse and search posts in a responsive social feed
+- **Profiles and Connections** — View profiles, follow/unfollow users, and browse followers/following
+- **Communities** — Discover, create, join, leave, view members, and browse community posts
+- **Replies** — Create nested replies on posts
+- **Direct Messaging** — Create conversations, send/read messages, and receive WebSocket events
+- **Notifications** — View, count, and mark notifications read
 - **My Posts** — View, edit, and delete only your own content
-- **Create Posts** — Share new content with the community instantly
-- **Voting System** — Upvote posts and track vote counts in real time
+- **Create Posts** — Share text, image URL, video URL, and community-linked posts
+- **Voting System** — Upvote posts and remove votes
 - **Dark / Light Mode** — Toggle between themes with a single click
 - **Responsive Layout** — Works smoothly on desktop, tablet, and mobile
 - **Type-Safe Codebase** — Fully written in TypeScript for reliability and maintainability
@@ -152,6 +157,12 @@ The frontend communicates with the following backend endpoints:
 | `PUT` | `/posts/{id}` | Edit your post |
 | `DELETE` | `/posts/{id}` | Delete your post |
 | `POST` | `/vote/` | Upvote or remove a vote |
+| `GET/POST/DELETE` | `/users/{id}/follow*` | Follow status and connections |
+| `GET/POST/DELETE` | `/communities/*` | Community discovery and membership |
+| `GET/POST/PATCH/DELETE` | `/posts/{id}/replies*` | Nested replies |
+| `GET/POST/PATCH/DELETE` | `/conversations/*`, `/messages/*` | Direct messages |
+| `GET/POST` | `/notifications/*` | Notifications and read state |
+| `WebSocket` | `/ws/events?token=...` | Real-time message and notification events |
 
 Full interactive API docs: [https://fastapi-management-system.onrender.com/docs](https://fastapi-management-system.onrender.com/docs)
 
