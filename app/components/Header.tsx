@@ -49,6 +49,14 @@ export default function Header() {
         <div className="flex items-center gap-3">
           <ThemeToggle />
 
+          {isAuthed ? (
+            <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary navigation">
+              <Link className="vf-nav-link" href="/communities">Communities</Link>
+              <Link className="vf-nav-link" href="/messages">Messages</Link>
+              <Link className="vf-nav-link" href="/notifications">Notifications</Link>
+            </nav>
+          ) : null}
+
           {/* user / actions */}
           <div className="hidden md:flex md:items-center md:gap-3">
             {isAuthed && user ? (
@@ -101,6 +109,11 @@ export default function Header() {
             <Link href="/" onClick={() => setMobileOpen(false)} className="text-sm text-slate-200">
               Feed
             </Link>
+            {isAuthed ? <>
+              <Link href="/communities" onClick={() => setMobileOpen(false)} className="text-sm text-slate-200">Communities</Link>
+              <Link href="/messages" onClick={() => setMobileOpen(false)} className="text-sm text-slate-200">Messages</Link>
+              <Link href="/notifications" onClick={() => setMobileOpen(false)} className="text-sm text-slate-200">Notifications</Link>
+            </> : null}
             {!isAuthed ? (
               <Link href="/login" onClick={() => setMobileOpen(false)} className="text-sm text-slate-200">
                 Sign in

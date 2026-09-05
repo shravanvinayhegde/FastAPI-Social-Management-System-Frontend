@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { getUser, getPosts, PostWithVotes, UserOut } from "../../../lib/api";
 import PostCard from "../../components/PostCard";
 import { Loading, Empty, ErrorBanner } from "../../components/Feedback";
+import FollowButton from "../../components/FollowButton";
+import Link from "next/link";
 
 export default function UserClient({ id }: { id: number }) {
   const [user, setUser] = useState<UserOut | null>(null);
@@ -47,8 +49,10 @@ export default function UserClient({ id }: { id: number }) {
   return (
     <div className="space-y-6">
       <section className="vf-card p-6">
-        <h1 className="text-2xl font-semibold">{user.email}</h1>
-        <p className="text-sm text-slate-300 mt-1">Joined: {new Date(user.created_at).toLocaleString()}</p>
+        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
+          <div><p className="vf-eyebrow">Profile</p><h1 className="mt-2 text-2xl font-semibold">{user.email}</h1><p className="mt-1 text-sm text-slate-400">Joined {new Date(user.created_at).toLocaleDateString()}</p></div>
+          <div className="flex flex-wrap gap-2"><FollowButton userId={id} /><Link className="vf-btn-secondary" href={`/messages?user=${id}`}>Message</Link></div>
+        </div>
       </section>
 
       <section className="space-y-4">

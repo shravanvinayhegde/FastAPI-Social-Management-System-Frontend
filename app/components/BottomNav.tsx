@@ -25,40 +25,11 @@ export default function BottomNav() {
           </svg>
           <span>Feed</span>
         </Link>
-        {/* replaced My Posts link with Logout button (opens confirmation) */}
-        <button
-          type="button"
-          className="flex flex-col items-center text-xs text-slate-300"
-          onClick={() => setConfirmOpen(true)}
-          aria-label="Logout"
-          title="Logout"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="mb-0.5">
-            <path d="M16 17l5-5-5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M21 12H9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M9 19H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span>Logout</span>
-        </button>
-
-        <ConfirmModal
-          open={confirmOpen}
-          title="Log out"
-          description="Are you sure you want to log out?"
-          confirmLabel="Log out"
-          cancelLabel="Cancel"
-          onCancel={() => setConfirmOpen(false)}
-          onConfirm={() => {
-            logout();
-            if (typeof window !== "undefined") window.location.href = "/login";
-          }}
-        />
-        <Link href="/" className={`flex flex-col items-center text-xs text-slate-300`}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="mb-0.5">
-            <path d="M13 2L3 14h9l-1 8L21 10h-9l1-8z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span>Voting</span>
-        </Link>
+        <Link href="/communities" className={`flex flex-col items-center text-xs ${path.startsWith("/communities") ? "text-white" : "text-slate-300"}`}><span className="mb-0.5 text-lg">◎</span><span>Spaces</span></Link>
+        <Link href="/messages" className={`flex flex-col items-center text-xs ${path.startsWith("/messages") ? "text-white" : "text-slate-300"}`}><span className="mb-0.5 text-lg">◌</span><span>Messages</span></Link>
+        <Link href="/notifications" className={`flex flex-col items-center text-xs ${path.startsWith("/notifications") ? "text-white" : "text-slate-300"}`}><span className="mb-0.5 text-lg">○</span><span>Alerts</span></Link>
+        <button type="button" className="flex flex-col items-center text-xs text-slate-300" onClick={() => setConfirmOpen(true)} aria-label="Logout" title="Logout"><span className="mb-0.5 text-lg">↗</span><span>Logout</span></button>
+        <ConfirmModal open={confirmOpen} title="Log out" description="Are you sure you want to log out?" confirmLabel="Log out" cancelLabel="Cancel" onCancel={() => setConfirmOpen(false)} onConfirm={() => { logout(); if (typeof window !== "undefined") window.location.href = "/login"; }} />
       </div>
     </nav>
   );
