@@ -8,6 +8,7 @@ type AvatarProps = {
   email?: string;
   id?: number;
   size?: number;
+  avatarUrl?: string | null;
 };
 
 function initials(text?: string) {
@@ -18,7 +19,10 @@ function initials(text?: string) {
   return username[0].toUpperCase();
 }
 
-export default function Avatar({ email, id, size = 40 }: AvatarProps) {
+export default function Avatar({ email, id, size = 40, avatarUrl }: AvatarProps) {
+  if (avatarUrl) {
+    return <img src={avatarUrl} alt="" className="rounded-full object-cover" style={{ width: size, height: size }} />;
+  }
   // If no email prop provided, try to extract email/username from stored token
   let source = email;
   if (!source) {

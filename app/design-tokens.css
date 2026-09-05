@@ -65,6 +65,10 @@
 .profile-tabs { display: flex; gap: 4px; overflow-x: auto; border-top: 1px solid var(--panel-border); padding: 0 16px; }
 .profile-tab { flex: 0 0 auto; border-bottom: 2px solid transparent; padding: 14px 12px; color: var(--foreground-muted); font-size: 0.84rem; font-weight: 700; }
 .profile-tab:hover, .profile-tab-active { border-color: hsl(var(--accent)); color: var(--foreground); }
+.vf-icon-button { min-height: 36px; min-width: 36px; border-radius: 999px; color: var(--foreground-muted); font-size: 1.35rem; }
+.vf-icon-button:hover { background: var(--panel-highlight); color: var(--foreground); }
+.profile-dialog-backdrop { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; background: rgba(2, 6, 23, 0.7); padding: 16px; }
+.profile-dialog { width: min(100%, 460px); overflow: hidden; }
 
 @media (max-width: 640px) {
   .vf-container { padding-left: 12px; padding-right: 12px; }

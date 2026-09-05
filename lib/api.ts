@@ -15,6 +15,21 @@ export type UserOut = {
   id: number;
   email: string;
   created_at: string;
+  username?: string | null;
+  display_name?: string | null;
+  bio?: string | null;
+  avatar_url?: string | null;
+  profile_visibility?: "public" | "private" | string | null;
+  show_posts?: boolean;
+  show_communities?: boolean;
+};
+
+export type ProfileUpdate = {
+  display_name?: string;
+  bio?: string;
+  show_posts?: boolean;
+  show_communities?: boolean;
+  profile_visibility?: "public" | "private";
 };
 
 export type FollowStatus = {
@@ -437,4 +452,8 @@ export async function vote(postId: number, dir: 0 | 1): Promise<{ message: strin
 
 export async function getUser(id: number): Promise<UserOut> {
   return request<UserOut>(`/users/${id}`, { method: "GET" }, { auth: true, json: true });
+}
+
+export async function updateMyProfile(update: ProfileUpdate): Promise<UserOut> {
+  return request<UserOut>("/users/me/profile", { method: "PATCH", body: JSON.stringify(update) }, { auth: true, json: true });
 }
