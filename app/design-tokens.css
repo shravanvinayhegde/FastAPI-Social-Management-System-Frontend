@@ -57,6 +57,14 @@
 .vf-nav-link { border-radius: 6px; padding: 8px 10px; color: var(--foreground-muted); font-size: 0.82rem; font-weight: 600; }
 .vf-nav-link:hover { color: var(--foreground); background: var(--panel-highlight); }
 .vf-badge { display: inline-flex; min-width: 24px; justify-content: center; border-radius: 999px; background: hsl(var(--accent)); color: var(--accent-foreground); padding: 3px 7px; font-size: 0.72rem; font-weight: 800; }
+.vf-sidebar-link { display: flex; width: 100%; align-items: center; gap: 10px; border-radius: 7px; padding: 11px 12px; color: var(--foreground-muted); font-size: 0.86rem; font-weight: 600; text-align: left; }
+.vf-sidebar-link:hover, .vf-sidebar-link-active { background: hsl(var(--accent) / 0.1); color: var(--foreground); }
+.vf-tabs-row { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--panel-border); padding-bottom: 10px; }
+.vf-widget-link { display: flex; justify-content: space-between; border-radius: 6px; padding: 9px 0; color: var(--foreground-muted); font-size: 0.85rem; }
+.vf-widget-link:hover { color: hsl(var(--accent)); }
+.profile-tabs { display: flex; gap: 4px; overflow-x: auto; border-top: 1px solid var(--panel-border); padding: 0 16px; }
+.profile-tab { flex: 0 0 auto; border-bottom: 2px solid transparent; padding: 14px 12px; color: var(--foreground-muted); font-size: 0.84rem; font-weight: 700; }
+.profile-tab:hover, .profile-tab-active { border-color: hsl(var(--accent)); color: var(--foreground); }
 
 @media (max-width: 640px) {
   .vf-container { padding-left: 12px; padding-right: 12px; }

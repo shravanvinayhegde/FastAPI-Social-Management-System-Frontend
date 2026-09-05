@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { vote } from "../../lib/api";
 import VoteRail from "./VoteRail";
 import Avatar from "./Avatar";
@@ -12,6 +13,7 @@ type PostCardProps = {
   postId: number;
   postedBy: string;
   postedAt: string;
+  ownerId?: number;
   isOwner?: boolean;
   onDelete?: (postId: number) => Promise<void>;
   onUpdate?: (postId: number, title: string, content: string) => Promise<void>;
@@ -24,6 +26,7 @@ export default function PostCard({
   postId,
   postedBy,
   postedAt,
+  ownerId,
   isOwner = false,
   onDelete,
   onUpdate,
@@ -96,7 +99,7 @@ export default function PostCard({
   };
 
   return (
-    <article className="vf-post group rounded-[1.25rem] border border-white/6 bg-white/2 p-4 transition hover:shadow-lg">
+    <article className="vf-post group rounded-[1rem] border border-white/10 bg-white/[0.025] p-4 transition hover:border-[hsl(var(--accent)/.28)] hover:shadow-lg">
       <div className="flex gap-4">
         <div className="hidden sm:flex sm:flex-col sm:items-center">
           <VoteRail
@@ -111,9 +114,7 @@ export default function PostCard({
               <div className="flex items-center gap-3">
                 <Avatar email={postedBy} size={40} />
                 <div>
-                  <h3 className="text-sm font-semibold text-white">
-                    {postedBy.split("@")[0].replace(/[._-]/g, " ").replace(/(^|\s)\S/g, (t) => t.toUpperCase())}
-                  </h3>
+                  {ownerId ? <Link href={`/u/${ownerId}`} className="text-sm font-semibold text-white hover:text-[hsl(var(--accent))]">{postedBy.split("@")[0].replace(/[._-]/g, " ").replace(/(^|\s)\S/g, (t) => t.toUpperCase())}</Link> : <h3 className="text-sm font-semibold text-white">{postedBy}</h3>}
                   <div className="text-xs text-slate-400">@{postedBy.split("@")[0]} • {postedAt}</div>
                 </div>
               </div>
@@ -175,8 +176,8 @@ export default function PostCard({
           ) : (
             <>
               <div className="mt-3">
-                <h2 className="text-lg font-semibold text-white">{title}</h2>
-                <p className="mt-2 text-sm text-slate-300">{content}</p>
+                <h2 className="text-lg font-semibold leading-snug text-white">{title}</h2>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{content}</p>
               </div>
 
               {/* mobile vote rail (bottom left) */}
@@ -190,6 +191,8 @@ export default function PostCard({
               </div>
             </>
           )}
+
+          {!isEditing ? <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-white/10 pt-3 text-xs text-slate-500"><button type="button" className="hover:text-[hsl(var(--accent))]" aria-label="Comment on post">Comment</button><button type="button" className="hover:text-[hsl(var(--accent))]" aria-label="Share post">Share</button><span className="ml-auto">{postedAt}</span></div> : null}
 
           {error ? <p className="mt-3 text-xs text-rose-300">{error}</p> : null}
         </div>
