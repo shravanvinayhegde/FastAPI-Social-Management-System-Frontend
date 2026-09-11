@@ -6,12 +6,12 @@ import Avatar from "./Avatar";
 import ThemeToggle from "./ThemeToggle";
 import SearchBar from "./SearchBar";
 import { useRouter } from "next/navigation";
-import { getToken, getCurrentUserId, getUser } from "../../lib/api";
+import { getToken } from "../../lib/api";
+import { useAuth } from "./AuthProvider";
 
 export default function Header() {
   const [isAuthed, setIsAuthed] = useState(false);
-  const [user, setUser] = useState<{ id: number; email: string; username?: string | null; display_name?: string | null; avatar_url?: string | null } | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { currentUser: user, loading } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const router = useRouter();
@@ -21,14 +21,6 @@ export default function Header() {
     setIsAuthed(Boolean(token));
     if (!token) return;
 
-    const id = getCurrentUserId();
-    if (!id) return;
-
-    setLoading(true);
-    getUser(id)
-      .then((u) => setUser(u))
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
   }, []);
 
   return (

@@ -1,8 +1,9 @@
 "use client";
 
 import React, { FormEvent, useEffect, useState } from "react";
-import { createPostWithMedia, getCurrentUserId, getUser, PostEntity } from "../../lib/api";
+import { createPostWithMedia, PostEntity } from "../../lib/api";
 import Avatar from "./Avatar";
+import { useAuth } from "./AuthProvider";
 
 type ComposerProps = {
   onCreate: (post: PostEntity) => void;
@@ -19,7 +20,9 @@ export default function Composer({ onCreate, communityId }: ComposerProps) {
   const [video, setVideo] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [user, setUser] = useState<{ id: number; email: string; username?: string | null; avatar_url?: string | null } | null>(null);
+  const { currentUser: user } = useAuth();
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
 
   const selectFile = (file: File | undefined, kind: "image" | "video") => {
     if (!file) return;
@@ -53,10 +56,18 @@ export default function Composer({ onCreate, communityId }: ComposerProps) {
   };
 
   useEffect(() => {
-    const id = getCurrentUserId();
-    if (!id) return;
-    getUser(id).then((u) => setUser(u)).catch(() => setUser(null));
-  }, []);
+    if (!image) { setImagePreview(null); return; }
+    const url = URL.createObjectURL(image);
+    setImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [image]);
+
+  useEffect(() => {
+    if (!video) { setVideoPreview(null); return; }
+    const url = URL.createObjectURL(video);
+    setVideoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [video]);
 
   return (
     <form onSubmit={submit} className="vf-card rounded-[1.25rem] p-4" aria-label="Create post">
@@ -84,8 +95,8 @@ export default function Composer({ onCreate, communityId }: ComposerProps) {
             <label className="vf-btn-secondary cursor-pointer px-3 py-2 text-sm">Add image<input className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => selectFile(event.target.files?.[0], "image")} /></label>
             <label className="vf-btn-secondary cursor-pointer px-3 py-2 text-sm">Add video<input className="sr-only" type="file" accept="video/mp4,video/webm,video/quicktime" onChange={(event) => selectFile(event.target.files?.[0], "video")} /></label>
           </div>
-          {image ? <div className="mt-3 flex items-start gap-3"><img src={URL.createObjectURL(image)} alt="Selected image preview" className="h-24 w-24 rounded-lg object-cover" /><button type="button" className="text-xs text-rose-300" onClick={() => setImage(null)}>Remove image</button></div> : null}
-          {video ? <div className="mt-3 flex items-start gap-3"><video src={URL.createObjectURL(video)} controls className="h-24 w-40 rounded-lg object-cover" /><button type="button" className="text-xs text-rose-300" onClick={() => setVideo(null)}>Remove video</button></div> : null}
+          {image && imagePreview ? <div className="mt-3 flex items-start gap-3"><img src={imagePreview} alt="Selected image preview" className="h-24 w-24 rounded-lg object-cover" /><button type="button" className="text-xs text-rose-300" onClick={() => setImage(null)}>Remove image</button></div> : null}
+          {video && videoPreview ? <div className="mt-3 flex items-start gap-3"><video src={videoPreview} controls className="h-24 w-40 rounded-lg object-cover" /><button type="button" className="text-xs text-rose-300" onClick={() => setVideo(null)}>Remove video</button></div> : null}
           {error ? <p className="mt-2 text-sm text-rose-300">{error}</p> : null}
 
           <div className="mt-3 flex items-center justify-between">

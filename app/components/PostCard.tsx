@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Conversation, getConversations, resolveApiUrl, sendSharedPostMessage, sharePost, vote } from "../../lib/api";
+import { Conversation, getConversations, PostMedia, resolveApiUrl, sendSharedPostMessage, sharePost, vote } from "../../lib/api";
 import VoteRail from "./VoteRail";
 import Avatar from "./Avatar";
 import ReplySection from "./ReplySection";
@@ -22,6 +22,7 @@ type PostCardProps = {
   onUpdate?: (postId: number, title: string, content: string) => Promise<void>;
   imageUrl?: string | null;
   videoUrl?: string | null;
+  media?: PostMedia[];
 };
 
 export default function PostCard({
@@ -39,6 +40,7 @@ export default function PostCard({
   onUpdate,
   imageUrl,
   videoUrl,
+  media = [],
 }: PostCardProps) {
   const [currentVotes, setCurrentVotes] = useState(votes);
   const [isVoting, setIsVoting] = useState(false);
@@ -231,8 +233,7 @@ export default function PostCard({
               <div className="mt-3">
                 <h2 className="text-lg font-semibold leading-snug text-white">{title}</h2>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{content}</p>
-                {imageUrl ? <img src={resolveApiUrl(imageUrl) ?? undefined} alt="Post media" loading="lazy" className="mt-4 max-h-[28rem] w-full rounded-lg object-cover" /> : null}
-                {videoUrl ? <video src={resolveApiUrl(videoUrl) ?? undefined} controls className="mt-4 max-h-[28rem] w-full rounded-lg" /> : null}
+                {media.length ? media.map((item) => item.media_type === "video" ? <video key={item.id} src={resolveApiUrl(item.url) ?? undefined} controls className="mt-4 max-h-[28rem] w-full rounded-lg" /> : <img key={item.id} src={resolveApiUrl(item.url) ?? undefined} alt="Post media" loading="lazy" className="mt-4 max-h-[28rem] w-full rounded-lg object-cover" />) : <>{imageUrl ? <img src={resolveApiUrl(imageUrl) ?? undefined} alt="Post media" loading="lazy" className="mt-4 max-h-[28rem] w-full rounded-lg object-cover" /> : null}{videoUrl ? <video src={resolveApiUrl(videoUrl) ?? undefined} controls className="mt-4 max-h-[28rem] w-full rounded-lg" /> : null}</>}
               </div>
 
               {/* mobile vote rail (bottom left) */}
@@ -252,7 +253,7 @@ export default function PostCard({
           {showReplies && !isEditing ? <ReplySection postId={postId} /> : null}
 
           {error ? <p className="mt-3 text-xs text-rose-300">{error}</p> : null}
-          {shareOpen ? <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/80 p-4"><div className="flex items-center justify-between"><h3 className="font-semibold text-white">Share post</h3><button type="button" className="text-slate-400" onClick={() => setShareOpen(false)}>Close</button></div><div className="mt-3 flex flex-wrap gap-2"><button type="button" className="vf-btn-secondary px-3 py-2 text-sm" onClick={() => void copyLink()}>Copy link</button><button type="button" className="vf-btn-secondary px-3 py-2 text-sm" onClick={() => void deviceShare()}>Share via device</button></div><div className="mt-4 flex gap-2"><select className="vf-input min-w-0 flex-1" value={selectedConversation} onChange={(event) => setSelectedConversation(event.target.value)}><option value="">Share to VoteFlow...</option>{conversations.map((conversation) => <option key={conversation.id} value={conversation.id}>Conversation {conversation.id}</option>)}</select><button type="button" className="vf-btn-primary px-3 py-2 text-sm" disabled={!selectedConversation} onClick={() => void shareToConversation()}>Send</button></div>{shareMessage ? <p className="mt-2 text-sm text-emerald-300">{shareMessage}</p> : null}</div> : null}
+          {shareOpen ? <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/80 p-4"><div className="flex items-center justify-between"><h3 className="font-semibold text-white">Share post</h3><button type="button" className="text-slate-400" onClick={() => setShareOpen(false)}>Close</button></div><div className="mt-3 flex flex-wrap gap-2"><button type="button" className="vf-btn-secondary px-3 py-2 text-sm" onClick={() => void copyLink()}>Copy link</button><button type="button" className="vf-btn-secondary px-3 py-2 text-sm" onClick={() => void deviceShare()}>Share via device</button></div><div className="mt-4 flex gap-2"><select className="vf-input min-w-0 flex-1" value={selectedConversation} onChange={(event) => setSelectedConversation(event.target.value)}><option value="">Share to VoteFlow...</option>{conversations.map((conversation) => { const person = conversation.other_user || conversation.participant; return <option key={conversation.id} value={conversation.id}>{person?.display_name || person?.username || "User"} {person?.username ? `@${person.username}` : ""}</option>; })}</select><button type="button" className="vf-btn-primary px-3 py-2 text-sm" disabled={!selectedConversation} onClick={() => void shareToConversation()}>Send</button></div>{shareMessage ? <p className="mt-2 text-sm text-emerald-300">{shareMessage}</p> : null}</div> : null}
         </div>
 
         

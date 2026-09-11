@@ -30,6 +30,14 @@ export type UserOut = {
   show_communities?: boolean;
 };
 
+export type CurrentUser = {
+  id: number;
+  username: string;
+  display_name: string;
+  email: string;
+  avatar_url?: string | null;
+};
+
 export type FollowStatus = {
   following: boolean;
   follower_count: number;
@@ -59,6 +67,7 @@ export type ProfileResponse = {
   };
   stats: { followers: number; following: number; posts: number; communities: number };
   relationship: { is_following: boolean; is_followed_by: boolean };
+  actions: { can_follow: boolean; can_message: boolean; is_self: boolean };
   privacy: { visibility: string; show_posts: boolean; show_communities: boolean };
 };
 
@@ -87,6 +96,8 @@ export type Message = {
   content: string;
   created_at: string;
   sender?: UserOut | null;
+  shared_post_id?: number | null;
+  shared_post?: PostWithVotes | PostEntity | null;
 };
 
 export type Conversation = {
@@ -125,6 +136,18 @@ export type PostEntity = {
   community_id?: number | null;
   image_url?: string | null;
   video_url?: string | null;
+  media?: PostMedia[];
+};
+
+export type PostMedia = {
+  id: number;
+  url: string;
+  media_type: "image" | "video" | string;
+  mime_type: string;
+  size_bytes: number;
+  width?: number | null;
+  height?: number | null;
+  duration_seconds?: number | null;
 };
 
 export type PostWithVotes = {
@@ -236,10 +259,12 @@ async function request<T>(
     }
   }
 
-  const response = await fetch(buildUrl(path), {
-    ...init,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildUrl(path), { ...init, headers });
+  } catch {
+    throw new ApiError("Cannot reach VoteFlow API. Check the backend URL, CORS, and deployment status.", 0);
+  }
 
   const data = (await parseJsonSafe(response)) as JsonRecord | null;
 
@@ -423,7 +448,7 @@ export async function getCommunity(communityId: number): Promise<Community> {
 }
 
 export async function getCommunityBySlug(slug: string): Promise<Community> {
-  return request<Community>(`/communities/slug/${encodeURIComponent(slug)}`, { method: "GET" }, { auth: true, json: true });
+  return request<Community>(`/communities/by-slug/${encodeURIComponent(slug)}`, { method: "GET" }, { auth: true, json: true });
 }
 
 export async function createCommunity(name: string, description: string): Promise<Community> {
@@ -465,11 +490,11 @@ export async function getProfileReplies(username: string, options: GetUsersOptio
   return request<Reply[]>(`/users/${encodeURIComponent(username)}/replies?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
 }
 
-export async function getProfileMedia(username: string, options: GetUsersOptions = {}): Promise<PostWithVotes[]> {
+export async function getProfileMedia(username: string, options: GetUsersOptions = {}): Promise<PostMedia[]> {
   const params = new URLSearchParams();
   if (options.skip !== undefined) params.set("skip", String(options.skip));
   if (options.limit !== undefined) params.set("limit", String(options.limit));
-  return request<PostWithVotes[]>(`/users/${encodeURIComponent(username)}/media?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
+  return request<PostMedia[]>(`/users/${encodeURIComponent(username)}/media?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
 }
 
 export async function getProfileLikes(username: string, options: GetUsersOptions = {}): Promise<PostWithVotes[]> {
@@ -545,6 +570,10 @@ export async function getConversation(conversationId: number): Promise<Conversat
   return request<Conversation>(`/conversations/${conversationId}`, { method: "GET" }, { auth: true, json: true });
 }
 
+export async function getPost(postId: number): Promise<PostWithVotes> {
+  return request<PostWithVotes>(`/posts/${postId}`, { method: "GET" }, { auth: true, json: true });
+}
+
 export async function getMessages(conversationId: number, options: GetUsersOptions = {}): Promise<Message[]> {
   const params = new URLSearchParams();
   if (options.skip !== undefined) params.set("skip", String(options.skip));
@@ -557,7 +586,7 @@ export async function sendMessage(conversationId: number, content: string, postI
 }
 
 export async function sendSharedPostMessage(conversationId: number, postId: number): Promise<Message> {
-  return sendMessage(conversationId, `Shared post #${postId}`, postId);
+  return sendMessage(conversationId, "", postId);
 }
 
 export async function updateMessage(messageId: number, content: string): Promise<Message> {

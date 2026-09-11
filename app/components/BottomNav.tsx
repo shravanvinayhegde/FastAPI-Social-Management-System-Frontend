@@ -3,19 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getCurrentUserId, getUser, logout } from "../../lib/api";
+import { logout } from "../../lib/api";
+import { useAuth } from "./AuthProvider";
 import ConfirmModal from "./ConfirmModal";
 
 export default function BottomNav() {
   const path = usePathname();
-  const [myHref, setMyHref] = useState<string>("/login");
+  const { currentUser } = useAuth();
   const [confirmOpen, setConfirmOpen] = useState(false);
-
-  useEffect(() => {
-    const id = getCurrentUserId();
-    if (!id) { setMyHref("/login"); return; }
-    void getUser(id).then((user) => setMyHref(user.username ? `/profile/${encodeURIComponent(user.username)}` : "/login")).catch(() => setMyHref("/login"));
-  }, []);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 block md:hidden border-t border-white/6 bg-slate-900/70 backdrop-blur-sm">
@@ -29,6 +24,7 @@ export default function BottomNav() {
         <Link href="/communities" className={`flex flex-col items-center text-xs ${path.startsWith("/communities") ? "text-white" : "text-slate-300"}`}><span className="mb-0.5 text-lg">◎</span><span>Spaces</span></Link>
         <Link href="/messages" className={`flex flex-col items-center text-xs ${path.startsWith("/messages") ? "text-white" : "text-slate-300"}`}><span className="mb-0.5 text-lg">◌</span><span>Messages</span></Link>
         <Link href="/notifications" className={`flex flex-col items-center text-xs ${path.startsWith("/notifications") ? "text-white" : "text-slate-300"}`}><span className="mb-0.5 text-lg">○</span><span>Alerts</span></Link>
+        <Link href={currentUser ? `/profile/${encodeURIComponent(currentUser.username)}` : "/login"} className={`flex flex-col items-center text-xs ${path.startsWith("/profile") ? "text-white" : "text-slate-300"}`}><span className="mb-0.5 text-lg">◉</span><span>Profile</span></Link>
         <button type="button" className="flex flex-col items-center text-xs text-slate-300" onClick={() => setConfirmOpen(true)} aria-label="Logout" title="Logout"><span className="mb-0.5 text-lg">↗</span><span>Logout</span></button>
         <ConfirmModal open={confirmOpen} title="Log out" description="Are you sure you want to log out?" confirmLabel="Log out" cancelLabel="Cancel" onCancel={() => setConfirmOpen(false)} onConfirm={() => { logout(); if (typeof window !== "undefined") window.location.href = "/login"; }} />
       </div>

@@ -11,8 +11,6 @@ import { Loading, Empty, ErrorBanner } from "./components/Feedback";
 import {
   createPost,
   deletePost,
-  getCurrentUserId,
-  getUser,
   getPosts,
   getToken,
   logout,
@@ -20,6 +18,7 @@ import {
   updatePost,
 } from "../lib/api";
 import BottomNav from "./components/BottomNav";
+import { useAuth } from "./components/AuthProvider";
 
 function formatPostedTime(timestamp: string): string {
   if (!timestamp) {
@@ -39,21 +38,19 @@ function formatPostedTime(timestamp: string): string {
 
 export default function HomePage() {
   const router = useRouter();
+  const { currentUser } = useAuth();
   const [posts, setPosts] = useState<PostWithVotes[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [error, setError] = useState("");
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
-  const [currentUsername, setCurrentUsername] = useState<string | null>(null);
+  const currentUserId = currentUser?.id ?? null;
+  const currentUsername = currentUser?.username ?? null;
   useEffect(() => {
     const token = getToken();
     if (!token) {
       router.push("/login");
       return;
     }
-    const id = getCurrentUserId();
-    setCurrentUserId(id);
-    if (id) void getUser(id).then((user) => setCurrentUsername(user.username ?? null)).catch(() => setCurrentUsername(null));
     const loadPosts = async (opts: { limit?: number; skip?: number; search?: string } = {}) => {
       setIsLoading(true);
       setError("");
@@ -189,6 +186,7 @@ export default function HomePage() {
                 postedAt={formatPostedTime(post.Post.created_at)}
                 imageUrl={post.Post.image_url}
                 videoUrl={post.Post.video_url}
+                media={post.Post.media}
                 isOwner={currentUserId === post.Post.owner_id}
                 onDelete={handleDeletePost}
                 onUpdate={handleUpdatePost}
