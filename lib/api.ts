@@ -2,9 +2,21 @@ export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "https://fastapi-management-system.onrender.com";
 
 export function resolveApiUrl(value?: string | null): string | null {
-  if (!value) return null;
-  if (/^https?:\/\//i.test(value)) return value;
-  return `${API_URL.replace(/\/$/, "")}/${value.replace(/^\//, "")}`;
+  const path = value?.trim();
+  if (!path) return null;
+  if (/^(data|blob):/i.test(path)) return path;
+
+  if (/^https?:\/\//i.test(path)) {
+    try {
+      const url = new URL(path);
+      if (!["localhost", "127.0.0.1", "0.0.0.0"].includes(url.hostname)) return path;
+      return `${API_URL.replace(/\/$/, "")}${url.pathname}${url.search}${url.hash}`;
+    } catch {
+      return path;
+    }
+  }
+
+  return `${API_URL.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
 }
 
 const TOKEN_KEY = "token";

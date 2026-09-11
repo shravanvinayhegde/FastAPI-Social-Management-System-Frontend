@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { getToken, resolveApiUrl } from "../../lib/api";
 import DefaultAvatarSvg from "./DefaultAvatarSvg";
 
@@ -20,8 +20,23 @@ function initials(text?: string) {
 }
 
 export default function Avatar({ email, id, size = 40, avatarUrl }: AvatarProps) {
-  if (avatarUrl) {
-    return <img src={resolveApiUrl(avatarUrl) ?? undefined} alt="" className="rounded-full object-cover" style={{ width: size, height: size }} />;
+  const resolvedAvatarUrl = resolveApiUrl(avatarUrl);
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [id, resolvedAvatarUrl]);
+
+  if (resolvedAvatarUrl && !imageFailed) {
+    return (
+      <img
+        src={resolvedAvatarUrl}
+        alt=""
+        className="rounded-full object-cover"
+        style={{ width: size, height: size }}
+        onError={() => setImageFailed(true)}
+      />
+    );
   }
   // If no email prop provided, try to extract email/username from stored token
   let source = email;
