@@ -1,12 +1,9 @@
-import { API_URL, getToken } from "./api";
+import { API_URL, getToken, Message, Notification } from "./api";
 
 export type SocketStatus = "connecting" | "connected" | "disconnected" | "reconnecting" | "failed";
-export type SocketEvent = {
-  type: string;
-  conversation_id?: number;
-  message?: unknown;
-  notification?: unknown;
-};
+export type SocketEvent =
+  | { type: "new_message"; conversation_id: number; message: Message }
+  | { type: "notification"; notification: Notification };
 
 type SocketOptions = {
   onEvent: (event: SocketEvent) => void;
@@ -41,9 +38,14 @@ export class ReconnectingSocket {
       }
     };
     this.socket.onerror = () => this.options.onStatus?.("disconnected");
-    this.socket.onclose = () => {
+    this.socket.onclose = (event) => {
       this.socket = null;
       if (this.closed) return;
+      if (event.code === 1008 || event.code === 4001) {
+        this.closed = true;
+        this.options.onStatus?.("failed");
+        return;
+      }
       this.options.onStatus?.("reconnecting");
       const delay = Math.min(30000, 1000 * 2 ** this.attempts++);
       this.retryTimer = setTimeout(() => this.connect(), delay);

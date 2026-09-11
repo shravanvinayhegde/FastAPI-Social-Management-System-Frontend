@@ -89,6 +89,8 @@ export default function UserClient({ id }: { id: number }) {
               votes={post.votes}
               postedBy={post.Post.owner?.email ?? "Unknown"}
               ownerId={post.Post.owner_id}
+              ownerUsername={post.Post.owner?.username}
+              ownerAvatarUrl={post.Post.owner?.avatar_url}
               postedAt={new Date(post.Post.created_at).toLocaleString()}
             />
           ))

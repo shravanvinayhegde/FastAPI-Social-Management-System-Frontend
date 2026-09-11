@@ -181,6 +181,7 @@ export default function HomePage() {
                 postedBy={post.Post.owner?.email ?? "Unknown user"}
                 ownerId={post.Post.owner_id}
                 ownerUsername={post.Post.owner?.username}
+                ownerAvatarUrl={post.Post.owner?.avatar_url}
                 postedAt={formatPostedTime(post.Post.created_at)}
                 imageUrl={post.Post.image_url}
                 videoUrl={post.Post.video_url}

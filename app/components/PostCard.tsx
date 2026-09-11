@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { sharePost, vote } from "../../lib/api";
+import { resolveApiUrl, sharePost, vote } from "../../lib/api";
 import VoteRail from "./VoteRail";
 import Avatar from "./Avatar";
+import ReplySection from "./ReplySection";
 
 type PostCardProps = {
   title: string;
@@ -15,6 +16,7 @@ type PostCardProps = {
   postedAt: string;
   ownerId?: number;
   ownerUsername?: string | null;
+  ownerAvatarUrl?: string | null;
   isOwner?: boolean;
   onDelete?: (postId: number) => Promise<void>;
   onUpdate?: (postId: number, title: string, content: string) => Promise<void>;
@@ -31,6 +33,7 @@ export default function PostCard({
   postedAt,
   ownerId,
   ownerUsername,
+  ownerAvatarUrl,
   isOwner = false,
   onDelete,
   onUpdate,
@@ -47,6 +50,7 @@ export default function PostCard({
   const [error, setError] = useState("");
   const [shareCount, setShareCount] = useState(0);
   const [isShared, setIsShared] = useState(false);
+  const [showReplies, setShowReplies] = useState(false);
 
   const handleVote = async (dir: 0 | 1) => {
     if (isVoting) {
@@ -130,7 +134,7 @@ export default function PostCard({
         <div className="flex-1">
           <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <Avatar email={postedBy} size={40} />
+                <Avatar email={postedBy} id={ownerId} avatarUrl={ownerAvatarUrl} size={40} />
                 <div>
                   {ownerId ? <Link href={ownerUsername ? `/profile/${encodeURIComponent(ownerUsername)}` : `/u/${ownerId}`} className="text-sm font-semibold text-white hover:text-[hsl(var(--accent))]">{postedBy.split("@")[0].replace(/[._-]/g, " ").replace(/(^|\s)\S/g, (t) => t.toUpperCase())}</Link> : <h3 className="text-sm font-semibold text-white">{postedBy}</h3>}
                   <div className="text-xs text-slate-400">@{postedBy.split("@")[0]} • {postedAt}</div>
@@ -196,8 +200,8 @@ export default function PostCard({
               <div className="mt-3">
                 <h2 className="text-lg font-semibold leading-snug text-white">{title}</h2>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{content}</p>
-                {imageUrl ? <img src={imageUrl} alt="Post media" loading="lazy" className="mt-4 max-h-[28rem] w-full rounded-lg object-cover" /> : null}
-                {videoUrl ? <video src={videoUrl} controls className="mt-4 max-h-[28rem] w-full rounded-lg" /> : null}
+                {imageUrl ? <img src={resolveApiUrl(imageUrl) ?? undefined} alt="Post media" loading="lazy" className="mt-4 max-h-[28rem] w-full rounded-lg object-cover" /> : null}
+                {videoUrl ? <video src={resolveApiUrl(videoUrl) ?? undefined} controls className="mt-4 max-h-[28rem] w-full rounded-lg" /> : null}
               </div>
 
               {/* mobile vote rail (bottom left) */}
@@ -212,7 +216,9 @@ export default function PostCard({
             </>
           )}
 
-          {!isEditing ? <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-white/10 pt-3 text-xs text-slate-500"><button type="button" className="hover:text-[hsl(var(--accent))]" aria-label="Comment on post">Comment</button><button type="button" onClick={() => void handleShare()} className={isShared ? "text-[hsl(var(--accent))]" : "hover:text-[hsl(var(--accent))]"} aria-label="Share post">{isShared ? "Shared" : "Share"}{shareCount ? ` · ${shareCount}` : ""}</button><span className="ml-auto">{postedAt}</span></div> : null}
+          {!isEditing ? <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-white/10 pt-3 text-xs text-slate-500"><button type="button" onClick={() => setShowReplies((current) => !current)} className="hover:text-[hsl(var(--accent))]" aria-expanded={showReplies} aria-label="Comment on post">{showReplies ? "Hide comments" : "Comment"}</button><button type="button" onClick={() => void handleShare()} className={isShared ? "text-[hsl(var(--accent))]" : "hover:text-[hsl(var(--accent))]"} aria-label="Share post">{isShared ? "Shared" : "Share"}{shareCount ? ` · ${shareCount}` : ""}</button><span className="ml-auto">{postedAt}</span></div> : null}
+
+          {showReplies && !isEditing ? <ReplySection postId={postId} /> : null}
 
           {error ? <p className="mt-3 text-xs text-rose-300">{error}</p> : null}
         </div>

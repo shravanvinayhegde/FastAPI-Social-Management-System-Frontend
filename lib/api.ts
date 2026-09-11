@@ -1,6 +1,12 @@
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "https://fastapi-management-system.onrender.com";
 
+export function resolveApiUrl(value?: string | null): string | null {
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  return `${API_URL.replace(/\/$/, "")}/${value.replace(/^\//, "")}`;
+}
+
 const TOKEN_KEY = "token";
 const LEGACY_TOKEN_KEY = "access_token";
 
@@ -98,7 +104,7 @@ export type Notification = {
   type: string;
   entity_type: string | null;
   entity_id: number | null;
-  payload: string;
+  payload: Record<string, unknown>;
   is_read: boolean;
   created_at: string;
 };
@@ -239,6 +245,9 @@ async function request<T>(
         : `Request failed (${response.status} ${response.statusText})`;
     if (response.status === 401) {
       logout();
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        window.location.assign("/login");
+      }
     }
     throw new ApiError(detail, response.status);
   }
@@ -380,7 +389,7 @@ export type GetCommunitiesOptions = { search?: string; skip?: number; limit?: nu
 
 export async function getCommunities(options: GetCommunitiesOptions = {}): Promise<Community[]> {
   const params = new URLSearchParams();
-  Object.entries(options).filter(([key]) => key !== "sort").forEach(([key, value]) => {
+  Object.entries(options).forEach(([key, value]) => {
     if (value !== undefined && value !== "") params.set(key, String(value));
   });
   const query = params.toString();

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { getToken } from "../../lib/api";
+import { getToken, resolveApiUrl } from "../../lib/api";
 import DefaultAvatarSvg from "./DefaultAvatarSvg";
 
 type AvatarProps = {
@@ -21,7 +21,7 @@ function initials(text?: string) {
 
 export default function Avatar({ email, id, size = 40, avatarUrl }: AvatarProps) {
   if (avatarUrl) {
-    return <img src={avatarUrl} alt="" className="rounded-full object-cover" style={{ width: size, height: size }} />;
+    return <img src={resolveApiUrl(avatarUrl) ?? undefined} alt="" className="rounded-full object-cover" style={{ width: size, height: size }} />;
   }
   // If no email prop provided, try to extract email/username from stored token
   let source = email;
