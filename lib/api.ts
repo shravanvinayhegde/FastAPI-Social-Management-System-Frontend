@@ -95,6 +95,11 @@ export type Conversation = {
   user_two_id: number;
   created_at: string;
   updated_at: string;
+  participant?: UserOut | null;
+  other_user?: UserOut | null;
+  latest_message?: Message | null;
+  last_message?: Message | null;
+  unread_count?: number;
 };
 
 export type Notification = {
@@ -320,6 +325,23 @@ export async function createPost(
   );
 }
 
+export async function createPostWithMedia(
+  title: string,
+  content: string,
+  files: { image?: File | null; video?: File | null },
+  published = true,
+  communityId?: number | null
+): Promise<PostEntity> {
+  const body = new FormData();
+  body.append("title", title);
+  body.append("content", content);
+  body.append("published", String(published));
+  if (communityId) body.append("community_id", String(communityId));
+  if (files.image) body.append("image", files.image);
+  if (files.video) body.append("video", files.video);
+  return request<PostEntity>("/posts/", { method: "POST", body }, { auth: true, json: false });
+}
+
 export async function updatePost(
   postId: number,
   title: string,
@@ -400,6 +422,10 @@ export async function getCommunity(communityId: number): Promise<Community> {
   return request<Community>(`/communities/${communityId}`, { method: "GET" }, { auth: true, json: true });
 }
 
+export async function getCommunityBySlug(slug: string): Promise<Community> {
+  return request<Community>(`/communities/slug/${encodeURIComponent(slug)}`, { method: "GET" }, { auth: true, json: true });
+}
+
 export async function createCommunity(name: string, description: string): Promise<Community> {
   return request<Community>("/communities/", { method: "POST", body: JSON.stringify({ name, description }) }, { auth: true, json: true });
 }
@@ -430,6 +456,27 @@ export async function getProfilePosts(username: string, options: GetUsersOptions
   if (options.skip !== undefined) params.set("skip", String(options.skip));
   if (options.limit !== undefined) params.set("limit", String(options.limit));
   return request<PostWithVotes[]>(`/users/${encodeURIComponent(username)}/posts?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
+}
+
+export async function getProfileReplies(username: string, options: GetUsersOptions = {}): Promise<Reply[]> {
+  const params = new URLSearchParams();
+  if (options.skip !== undefined) params.set("skip", String(options.skip));
+  if (options.limit !== undefined) params.set("limit", String(options.limit));
+  return request<Reply[]>(`/users/${encodeURIComponent(username)}/replies?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
+}
+
+export async function getProfileMedia(username: string, options: GetUsersOptions = {}): Promise<PostWithVotes[]> {
+  const params = new URLSearchParams();
+  if (options.skip !== undefined) params.set("skip", String(options.skip));
+  if (options.limit !== undefined) params.set("limit", String(options.limit));
+  return request<PostWithVotes[]>(`/users/${encodeURIComponent(username)}/media?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
+}
+
+export async function getProfileLikes(username: string, options: GetUsersOptions = {}): Promise<PostWithVotes[]> {
+  const params = new URLSearchParams();
+  if (options.skip !== undefined) params.set("skip", String(options.skip));
+  if (options.limit !== undefined) params.set("limit", String(options.limit));
+  return request<PostWithVotes[]>(`/users/${encodeURIComponent(username)}/likes?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
 }
 
 export async function getProfileFollowers(username: string, options: GetUsersOptions = {}): Promise<UserOut[]> {
@@ -486,6 +533,10 @@ export async function getConversations(): Promise<Conversation[]> {
   return request<Conversation[]>("/conversations", { method: "GET" }, { auth: true, json: true });
 }
 
+export async function getConversationSummary(conversationId: number): Promise<Conversation> {
+  return request<Conversation>(`/conversations/${conversationId}/summary`, { method: "GET" }, { auth: true, json: true });
+}
+
 export async function createConversation(userId: number): Promise<Conversation> {
   return request<Conversation>("/conversations", { method: "POST", body: JSON.stringify({ user_id: userId }) }, { auth: true, json: true });
 }
@@ -501,8 +552,12 @@ export async function getMessages(conversationId: number, options: GetUsersOptio
   return request<Message[]>(`/conversations/${conversationId}/messages?${params.toString()}`, { method: "GET" }, { auth: true, json: true });
 }
 
-export async function sendMessage(conversationId: number, content: string): Promise<Message> {
-  return request<Message>(`/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify({ content }) }, { auth: true, json: true });
+export async function sendMessage(conversationId: number, content: string, postId?: number): Promise<Message> {
+  return request<Message>(`/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify({ content, post_id: postId }) }, { auth: true, json: true });
+}
+
+export async function sendSharedPostMessage(conversationId: number, postId: number): Promise<Message> {
+  return sendMessage(conversationId, `Shared post #${postId}`, postId);
 }
 
 export async function updateMessage(messageId: number, content: string): Promise<Message> {

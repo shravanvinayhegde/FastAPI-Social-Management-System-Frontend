@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { resolveApiUrl, sharePost, vote } from "../../lib/api";
+import { Conversation, getConversations, resolveApiUrl, sendSharedPostMessage, sharePost, vote } from "../../lib/api";
 import VoteRail from "./VoteRail";
 import Avatar from "./Avatar";
 import ReplySection from "./ReplySection";
@@ -51,6 +51,12 @@ export default function PostCard({
   const [shareCount, setShareCount] = useState(0);
   const [isShared, setIsShared] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState("");
+  const [shareMessage, setShareMessage] = useState("");
+
+  const postUrl = typeof window !== "undefined" ? `${window.location.origin}/post/${postId}` : `/post/${postId}`;
 
   const handleVote = async (dir: 0 | 1) => {
     if (isVoting) {
@@ -71,7 +77,7 @@ export default function PostCard({
     }
   };
 
-  const handleShare = async () => {
+  const recordShare = async () => {
     try {
       const result = await sharePost(postId);
       setIsShared(result.shared);
@@ -79,6 +85,31 @@ export default function PostCard({
     } catch (shareError) {
       setError(shareError instanceof Error ? shareError.message : "Unable to share post.");
     }
+  };
+
+  const copyLink = async () => {
+    try { await navigator.clipboard.writeText(postUrl); await recordShare(); setShareMessage("Link copied"); }
+    catch (copyError) { setError(copyError instanceof Error ? copyError.message : "Unable to copy link."); }
+  };
+
+  const deviceShare = async () => {
+    try {
+      const canShare = typeof navigator.share === "function";
+      if (canShare) await navigator.share({ title, text: content, url: postUrl });
+      else await navigator.clipboard.writeText(postUrl);
+      await recordShare(); setShareMessage(canShare ? "Shared" : "Link copied");
+    } catch (shareError) { if ((shareError as DOMException).name !== "AbortError") setError(shareError instanceof Error ? shareError.message : "Unable to share post."); }
+  };
+
+  const openShare = async () => {
+    setShareOpen(true); setShareMessage("");
+    try { setConversations(await getConversations()); } catch { setConversations([]); }
+  };
+
+  const shareToConversation = async () => {
+    if (!selectedConversation) return;
+    try { await sendSharedPostMessage(Number(selectedConversation), postId); await recordShare(); setShareMessage("Sent"); }
+    catch (shareError) { setError(shareError instanceof Error ? shareError.message : "Unable to send post."); }
   };
 
   const handleSave = async () => {
@@ -136,8 +167,8 @@ export default function PostCard({
               <div className="flex items-center gap-3">
                 <Avatar email={postedBy} id={ownerId} avatarUrl={ownerAvatarUrl} size={40} />
                 <div>
-                  {ownerId ? <Link href={ownerUsername ? `/profile/${encodeURIComponent(ownerUsername)}` : `/u/${ownerId}`} className="text-sm font-semibold text-white hover:text-[hsl(var(--accent))]">{postedBy.split("@")[0].replace(/[._-]/g, " ").replace(/(^|\s)\S/g, (t) => t.toUpperCase())}</Link> : <h3 className="text-sm font-semibold text-white">{postedBy}</h3>}
-                  <div className="text-xs text-slate-400">@{postedBy.split("@")[0]} • {postedAt}</div>
+                  {ownerUsername ? <Link href={`/profile/${encodeURIComponent(ownerUsername)}`} className="text-sm font-semibold text-white hover:text-[hsl(var(--accent))]">{postedBy}</Link> : <h3 className="text-sm font-semibold text-white">{postedBy}</h3>}
+                  <div className="text-xs text-slate-400">{ownerUsername ? `@${ownerUsername} • ` : ""}{postedAt}</div>
                 </div>
               </div>
 
@@ -216,11 +247,12 @@ export default function PostCard({
             </>
           )}
 
-          {!isEditing ? <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-white/10 pt-3 text-xs text-slate-500"><button type="button" onClick={() => setShowReplies((current) => !current)} className="hover:text-[hsl(var(--accent))]" aria-expanded={showReplies} aria-label="Comment on post">{showReplies ? "Hide comments" : "Comment"}</button><button type="button" onClick={() => void handleShare()} className={isShared ? "text-[hsl(var(--accent))]" : "hover:text-[hsl(var(--accent))]"} aria-label="Share post">{isShared ? "Shared" : "Share"}{shareCount ? ` · ${shareCount}` : ""}</button><span className="ml-auto">{postedAt}</span></div> : null}
+          {!isEditing ? <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-white/10 pt-3 text-xs text-slate-500"><button type="button" onClick={() => setShowReplies((current) => !current)} className="hover:text-[hsl(var(--accent))]" aria-expanded={showReplies} aria-label="Comment on post">{showReplies ? "Hide comments" : "Comment"}</button><button type="button" onClick={() => void openShare()} className={isShared ? "text-[hsl(var(--accent))]" : "hover:text-[hsl(var(--accent))]"} aria-label="Share post">{isShared ? "Shared" : "Share"}{shareCount ? ` · ${shareCount}` : ""}</button><span className="ml-auto">{postedAt}</span></div> : null}
 
           {showReplies && !isEditing ? <ReplySection postId={postId} /> : null}
 
           {error ? <p className="mt-3 text-xs text-rose-300">{error}</p> : null}
+          {shareOpen ? <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/80 p-4"><div className="flex items-center justify-between"><h3 className="font-semibold text-white">Share post</h3><button type="button" className="text-slate-400" onClick={() => setShareOpen(false)}>Close</button></div><div className="mt-3 flex flex-wrap gap-2"><button type="button" className="vf-btn-secondary px-3 py-2 text-sm" onClick={() => void copyLink()}>Copy link</button><button type="button" className="vf-btn-secondary px-3 py-2 text-sm" onClick={() => void deviceShare()}>Share via device</button></div><div className="mt-4 flex gap-2"><select className="vf-input min-w-0 flex-1" value={selectedConversation} onChange={(event) => setSelectedConversation(event.target.value)}><option value="">Share to VoteFlow...</option>{conversations.map((conversation) => <option key={conversation.id} value={conversation.id}>Conversation {conversation.id}</option>)}</select><button type="button" className="vf-btn-primary px-3 py-2 text-sm" disabled={!selectedConversation} onClick={() => void shareToConversation()}>Send</button></div>{shareMessage ? <p className="mt-2 text-sm text-emerald-300">{shareMessage}</p> : null}</div> : null}
         </div>
 
         

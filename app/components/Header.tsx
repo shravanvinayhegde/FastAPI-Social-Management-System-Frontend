@@ -10,7 +10,7 @@ import { getToken, getCurrentUserId, getUser } from "../../lib/api";
 
 export default function Header() {
   const [isAuthed, setIsAuthed] = useState(false);
-  const [user, setUser] = useState<{ id: number; email: string } | null>(null);
+  const [user, setUser] = useState<{ id: number; email: string; username?: string | null; display_name?: string | null; avatar_url?: string | null } | null>(null);
   const [loading, setLoading] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -62,12 +62,12 @@ export default function Header() {
             {isAuthed && user ? (
               <div className="relative">
                   <div className="flex items-center gap-2" role="img" aria-label="User avatar">
-                    <Avatar size={36} email={user.email} id={user.id} />
+                    <Avatar size={36} email={user.email} id={user.id} avatarUrl={user.avatar_url} />
                     <div className="hidden lg:block">
                       <div className="text-sm font-medium text-slate-200 truncate max-w-[12rem]">
-                        {user.email.split("@")[0].replace(/[._-]/g, " ").replace(/(^|\s)\S/g, (t) => t.toUpperCase())}
+                        {user.display_name || user.username || user.email}
                       </div>
-                      <div className="text-xs text-slate-400">@{user.email.split("@")[0]}</div>
+                      <div className="text-xs text-slate-400">@{user.username || user.email.split("@")[0]}</div>
                     </div>
                   </div>
                 </div>

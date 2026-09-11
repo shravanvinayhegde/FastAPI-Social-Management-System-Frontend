@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getCurrentUserId, logout } from "../../lib/api";
+import { getCurrentUserId, getUser, logout } from "../../lib/api";
 import ConfirmModal from "./ConfirmModal";
 
 export default function BottomNav() {
@@ -13,7 +13,8 @@ export default function BottomNav() {
 
   useEffect(() => {
     const id = getCurrentUserId();
-    setMyHref(id ? `/u/${id}` : "/login");
+    if (!id) { setMyHref("/login"); return; }
+    void getUser(id).then((user) => setMyHref(user.username ? `/profile/${encodeURIComponent(user.username)}` : "/login")).catch(() => setMyHref("/login"));
   }, []);
 
   return (

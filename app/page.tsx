@@ -12,6 +12,7 @@ import {
   createPost,
   deletePost,
   getCurrentUserId,
+  getUser,
   getPosts,
   getToken,
   logout,
@@ -43,13 +44,16 @@ export default function HomePage() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [error, setError] = useState("");
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [currentUsername, setCurrentUsername] = useState<string | null>(null);
   useEffect(() => {
     const token = getToken();
     if (!token) {
       router.push("/login");
       return;
     }
-    setCurrentUserId(getCurrentUserId());
+    const id = getCurrentUserId();
+    setCurrentUserId(id);
+    if (id) void getUser(id).then((user) => setCurrentUsername(user.username ?? null)).catch(() => setCurrentUsername(null));
     const loadPosts = async (opts: { limit?: number; skip?: number; search?: string } = {}) => {
       setIsLoading(true);
       setError("");
@@ -152,7 +156,7 @@ export default function HomePage() {
             <Link href="/communities" className="vf-sidebar-link">◎ <span>Communities</span></Link>
             <Link href="/messages" className="vf-sidebar-link">◌ <span>Messages</span></Link>
             <Link href="/notifications" className="vf-sidebar-link">○ <span>Notifications</span></Link>
-            {currentUserId ? <Link href={`/u/${currentUserId}`} className="vf-sidebar-link">◉ <span>My profile</span></Link> : null}
+            {currentUsername ? <Link href={`/profile/${encodeURIComponent(currentUsername)}`} className="vf-sidebar-link">◉ <span>My profile</span></Link> : null}
           </nav>
         </aside>
 
@@ -198,7 +202,7 @@ export default function HomePage() {
         <aside className="hidden lg:block">
           <div className="sticky top-24 space-y-4">
             <section className="vf-card p-4"><p className="vf-eyebrow">Discover</p><h2 className="mt-2 text-lg font-semibold">Find your people</h2><p className="mt-2 text-sm text-slate-400">Explore communities and connect with members who share your interests.</p><Link href="/communities" className="mt-4 block text-sm font-semibold text-[hsl(var(--accent))]">Browse communities →</Link></section>
-            <section className="vf-card p-4"><p className="vf-eyebrow">Quick links</p><div className="mt-3 space-y-2"><Link className="vf-widget-link" href="/notifications">Your notifications <span>→</span></Link><Link className="vf-widget-link" href="/messages">Open messages <span>→</span></Link>{currentUserId ? <Link className="vf-widget-link" href={`/u/${currentUserId}`}>View your profile <span>→</span></Link> : null}</div></section>
+            <section className="vf-card p-4"><p className="vf-eyebrow">Quick links</p><div className="mt-3 space-y-2"><Link className="vf-widget-link" href="/notifications">Your notifications <span>→</span></Link><Link className="vf-widget-link" href="/messages">Open messages <span>→</span></Link>{currentUsername ? <Link className="vf-widget-link" href={`/profile/${encodeURIComponent(currentUsername)}`}>View your profile <span>→</span></Link> : null}</div></section>
           </div>
         </aside>
       </div>
