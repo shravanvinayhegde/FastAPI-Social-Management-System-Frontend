@@ -38,6 +38,13 @@ export type CurrentUser = {
   avatar_url?: string | null;
 };
 
+export type PublicUser = {
+  id: number;
+  username: string;
+  display_name: string;
+  avatar_url: string;
+};
+
 export type FollowStatus = {
   following: boolean;
   follower_count: number;
@@ -97,7 +104,7 @@ export type Message = {
   created_at: string;
   sender?: UserOut | null;
   shared_post_id?: number | null;
-  shared_post?: PostWithVotes | PostEntity | null;
+  shared_post?: SharedPostPreview | null;
 };
 
 export type Conversation = {
@@ -148,6 +155,23 @@ export type PostMedia = {
   width?: number | null;
   height?: number | null;
   duration_seconds?: number | null;
+};
+
+export type PostOwner = {
+  id: number;
+  username: string;
+  display_name: string;
+  avatar_url?: string | null;
+};
+
+export type SharedPostPreview = {
+  id: number;
+  title: string;
+  content: string;
+  owner_id: number;
+  owner?: PostOwner | null;
+  media: PostMedia[];
+  created_at: string;
 };
 
 export type PostWithVotes = {
@@ -473,57 +497,57 @@ export async function getCommunityPosts(communityId: number, options: GetPostsOp
 }
 
 export async function getProfile(username: string): Promise<ProfileResponse> {
-  return request<ProfileResponse>(`/users/${encodeURIComponent(username)}/profile`, { method: "GET" }, { auth: false, json: true });
+  return request<ProfileResponse>(`/users/${encodeURIComponent(username)}/profile`, { method: "GET" }, { auth: true, json: true });
 }
 
 export async function getProfilePosts(username: string, options: GetUsersOptions = {}): Promise<PostWithVotes[]> {
   const params = new URLSearchParams();
   if (options.skip !== undefined) params.set("skip", String(options.skip));
   if (options.limit !== undefined) params.set("limit", String(options.limit));
-  return request<PostWithVotes[]>(`/users/${encodeURIComponent(username)}/posts?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
+  return request<PostWithVotes[]>(`/users/${encodeURIComponent(username)}/posts?${params.toString()}`, { method: "GET" }, { auth: true, json: true });
 }
 
 export async function getProfileReplies(username: string, options: GetUsersOptions = {}): Promise<Reply[]> {
   const params = new URLSearchParams();
   if (options.skip !== undefined) params.set("skip", String(options.skip));
   if (options.limit !== undefined) params.set("limit", String(options.limit));
-  return request<Reply[]>(`/users/${encodeURIComponent(username)}/replies?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
+  return request<Reply[]>(`/users/${encodeURIComponent(username)}/replies?${params.toString()}`, { method: "GET" }, { auth: true, json: true });
 }
 
 export async function getProfileMedia(username: string, options: GetUsersOptions = {}): Promise<PostMedia[]> {
   const params = new URLSearchParams();
   if (options.skip !== undefined) params.set("skip", String(options.skip));
   if (options.limit !== undefined) params.set("limit", String(options.limit));
-  return request<PostMedia[]>(`/users/${encodeURIComponent(username)}/media?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
+  return request<PostMedia[]>(`/users/${encodeURIComponent(username)}/media?${params.toString()}`, { method: "GET" }, { auth: true, json: true });
 }
 
 export async function getProfileLikes(username: string, options: GetUsersOptions = {}): Promise<PostWithVotes[]> {
   const params = new URLSearchParams();
   if (options.skip !== undefined) params.set("skip", String(options.skip));
   if (options.limit !== undefined) params.set("limit", String(options.limit));
-  return request<PostWithVotes[]>(`/users/${encodeURIComponent(username)}/likes?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
+  return request<PostWithVotes[]>(`/users/${encodeURIComponent(username)}/likes?${params.toString()}`, { method: "GET" }, { auth: true, json: true });
 }
 
-export async function getProfileFollowers(username: string, options: GetUsersOptions = {}): Promise<UserOut[]> {
+export async function getProfileFollowers(username: string, options: GetUsersOptions = {}): Promise<PublicUser[]> {
   return getProfileUsers(username, "followers", options);
 }
 
-export async function getProfileFollowing(username: string, options: GetUsersOptions = {}): Promise<UserOut[]> {
+export async function getProfileFollowing(username: string, options: GetUsersOptions = {}): Promise<PublicUser[]> {
   return getProfileUsers(username, "following", options);
 }
 
-async function getProfileUsers(username: string, relation: "followers" | "following", options: GetUsersOptions): Promise<UserOut[]> {
+async function getProfileUsers(username: string, relation: "followers" | "following", options: GetUsersOptions): Promise<PublicUser[]> {
   const params = new URLSearchParams();
   if (options.skip !== undefined) params.set("skip", String(options.skip));
   if (options.limit !== undefined) params.set("limit", String(options.limit));
-  return request<UserOut[]>(`/users/${encodeURIComponent(username)}/${relation}?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
+  return request<PublicUser[]>(`/users/${encodeURIComponent(username)}/${relation}?${params.toString()}`, { method: "GET" }, { auth: true, json: true });
 }
 
 export async function getProfileCommunities(username: string, options: GetUsersOptions = {}): Promise<Community[]> {
   const params = new URLSearchParams();
   if (options.skip !== undefined) params.set("skip", String(options.skip));
   if (options.limit !== undefined) params.set("limit", String(options.limit));
-  return request<Community[]>(`/users/${encodeURIComponent(username)}/communities?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
+  return request<Community[]>(`/users/${encodeURIComponent(username)}/communities?${params.toString()}`, { method: "GET" }, { auth: true, json: true });
 }
 
 export async function updateMyProfile(update: ProfileUpdate): Promise<UserOut> {
@@ -559,7 +583,7 @@ export async function getConversations(): Promise<Conversation[]> {
 }
 
 export async function getConversationSummary(conversationId: number): Promise<Conversation> {
-  return request<Conversation>(`/conversations/${conversationId}/summary`, { method: "GET" }, { auth: true, json: true });
+  return getConversation(conversationId);
 }
 
 export async function createConversation(userId: number): Promise<Conversation> {
@@ -581,8 +605,8 @@ export async function getMessages(conversationId: number, options: GetUsersOptio
   return request<Message[]>(`/conversations/${conversationId}/messages?${params.toString()}`, { method: "GET" }, { auth: true, json: true });
 }
 
-export async function sendMessage(conversationId: number, content: string, postId?: number): Promise<Message> {
-  return request<Message>(`/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify({ content, post_id: postId }) }, { auth: true, json: true });
+export async function sendMessage(conversationId: number, content: string, sharedPostId?: number): Promise<Message> {
+  return request<Message>(`/conversations/${conversationId}/messages`, { method: "POST", body: JSON.stringify({ content, shared_post_id: sharedPostId }) }, { auth: true, json: true });
 }
 
 export async function sendSharedPostMessage(conversationId: number, postId: number): Promise<Message> {
@@ -638,5 +662,9 @@ export async function vote(postId: number, dir: 0 | 1): Promise<{ message: strin
 
 export async function getUser(id: number): Promise<UserOut> {
   return request<UserOut>(`/users/${id}`, { method: "GET" }, { auth: true, json: true });
+}
+
+export async function getMe(): Promise<CurrentUser> {
+  return request<CurrentUser>("/users/me", { method: "GET" }, { auth: true, json: true });
 }
 

@@ -179,7 +179,7 @@ export default function HomePage() {
                 title={post.Post.title}
                 content={post.Post.content}
                 votes={post.votes}
-                postedBy={post.Post.owner?.email ?? "Unknown user"}
+                postedBy={post.Post.owner?.display_name || post.Post.owner?.username || "Unknown user"}
                 ownerId={post.Post.owner_id}
                 ownerUsername={post.Post.owner?.username}
                 ownerAvatarUrl={post.Post.owner?.avatar_url}

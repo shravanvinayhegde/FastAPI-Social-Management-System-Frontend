@@ -53,7 +53,7 @@ export default function Header() {
           <div className="hidden md:flex md:items-center md:gap-3">
             {isAuthed && user ? (
               <div className="relative">
-                  <div className="flex items-center gap-2" role="img" aria-label="User avatar">
+                  <Link href={`/profile/${encodeURIComponent(user.username)}`} className="flex items-center gap-2" aria-label="Open my profile">
                     <Avatar size={36} email={user.email} id={user.id} avatarUrl={user.avatar_url} />
                     <div className="hidden lg:block">
                       <div className="text-sm font-medium text-slate-200 truncate max-w-[12rem]">
@@ -61,7 +61,7 @@ export default function Header() {
                       </div>
                       <div className="text-xs text-slate-400">@{user.username || user.email.split("@")[0]}</div>
                     </div>
-                  </div>
+                  </Link>
                 </div>
             ) : isAuthed && loading ? (
               <div className="h-9 w-9 rounded-full bg-slate-700 animate-pulse" />
@@ -111,10 +111,10 @@ export default function Header() {
                 Sign in
               </Link>
             ) : user ? (
-              <div onClick={() => setMobileOpen(false)} className="flex items-center gap-2" role="img" aria-label="User avatar">
+              <Link href={`/profile/${encodeURIComponent(user.username)}`} onClick={() => setMobileOpen(false)} className="flex items-center gap-2" aria-label="Open my profile">
                 <Avatar size={32} email={user.email} id={user.id} />
                 <span className="text-sm text-slate-200">{user.email}</span>
-              </div>
+              </Link>
             ) : null}
           </div>
         </div>

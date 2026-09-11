@@ -2,7 +2,7 @@
 
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { CurrentUser, getCurrentUserId, getToken, getUser } from "../../lib/api";
+import { CurrentUser, getMe, getToken } from "../../lib/api";
 
 type AuthContextValue = {
   currentUser: CurrentUser | null;
@@ -18,24 +18,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const token = getToken();
-    const id = getCurrentUserId();
-    if (!token || !id) {
+    if (!token) {
+      setCurrentUser(null);
       setLoading(false);
       return;
     }
 
-    void getUser(id)
-      .then((user) => {
-        if (user.username) {
-          setCurrentUser({
-            id: user.id,
-            username: user.username,
-            display_name: user.display_name || user.username,
-            email: user.email,
-            avatar_url: user.avatar_url,
-          });
-        }
-      })
+    void getMe()
+      .then(setCurrentUser)
       .catch(() => setCurrentUser(null))
       .finally(() => setLoading(false));
   }, [pathname]);
