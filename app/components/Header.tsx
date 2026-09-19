@@ -59,7 +59,7 @@ export default function Header() {
                       <div className="text-sm font-medium text-slate-200 truncate max-w-[12rem]">
                         {user.display_name || user.username || user.email}
                       </div>
-                      <div className="text-xs text-slate-400">@{user.username || user.email.split("@")[0]}</div>
+                      <div className="text-xs text-slate-400">@{user.username}</div>
                     </div>
                   </Link>
                 </div>
@@ -113,7 +113,7 @@ export default function Header() {
             ) : user ? (
               <Link href={`/profile/${encodeURIComponent(user.username)}`} onClick={() => setMobileOpen(false)} className="flex items-center gap-2" aria-label="Open my profile">
                 <Avatar size={32} email={user.email} id={user.id} />
-                <span className="text-sm text-slate-200">{user.email}</span>
+                <span className="text-sm text-slate-200">{user.display_name || user.username}</span>
               </Link>
             ) : null}
           </div>

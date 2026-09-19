@@ -587,7 +587,7 @@ export async function getCommunityMembers(communityId: number, options: GetUsers
   const params = new URLSearchParams();
   if (options.skip !== undefined) params.set("skip", String(options.skip));
   if (options.limit !== undefined) params.set("limit", String(options.limit));
-  return request<UserOut[]>(`/communities/${communityId}/members?${params.toString()}`, { method: "GET" }, { auth: false, json: true });
+  return request<UserOut[]>(`/communities/${communityId}/members?${params.toString()}`, { method: "GET" }, { auth: true, json: true });
 }
 
 export async function getConversations(): Promise<Conversation[]> {
