@@ -1,5 +1,6 @@
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "https://fastapi-management-system.onrender.com";
+const DEFAULT_API_URL = "https://fastapi-management-system.onrender.com";
+
+export const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim() || DEFAULT_API_URL;
 
 export function resolveApiUrl(value?: string | null): string | null {
   const path = value?.trim();
@@ -317,8 +318,10 @@ async function request<T>(
   }
 
   let response: Response;
+  const primaryUrl = buildUrl(path);
+
   try {
-    response = await fetch(buildUrl(path), { ...init, headers });
+    response = await fetch(primaryUrl, { ...init, headers });
   } catch {
     throw new ApiError("Cannot reach VoteFlow API. Check the backend URL, CORS, and deployment status.", 0);
   }
