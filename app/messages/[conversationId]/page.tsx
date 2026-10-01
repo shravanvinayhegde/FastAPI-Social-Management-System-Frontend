@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, use, useEffect, useRef, useState } from "react";
 import { Conversation, getConversation, getCurrentUserId, getMessages, getToken, markConversationRead, Message, sendMessage } from "../../../lib/api";
 import { ReconnectingSocket, SocketStatus } from "../../../lib/websocket";
 import { Empty, ErrorBanner, Loading } from "../../components/Feedback";
 import Avatar from "../../components/Avatar";
 import SharedPostCard from "../../components/SharedPostCard";
 
-export default function ConversationPage({ params }: { params: { conversationId: string } }) {
-  const conversationId = Number(params.conversationId);
+export default function ConversationPage({ params }: { params: Promise<{ conversationId: string }> }) {
+  const { conversationId: rawConversationId } = use(params);
+  const conversationId = Number(rawConversationId);
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [draft, setDraft] = useState("");

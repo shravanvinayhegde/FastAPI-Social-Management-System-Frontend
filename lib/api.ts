@@ -189,6 +189,7 @@ export type SharedPostPreview = {
 export type PostWithVotes = {
   Post: PostEntity;
   votes: number;
+  voted?: boolean;
 };
 
 export type ShareResult = { post_id: number; shared: boolean; share_count: number };
@@ -277,6 +278,26 @@ export function logout(): void {
   localStorage.removeItem(LEGACY_TOKEN_KEY);
 }
 
+function extractErrorDetail(data: JsonRecord | null, response: Response): string {
+  const detail = (data as { detail?: unknown } | null)?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => {
+        if (item && typeof item === "object" && typeof (item as { msg?: unknown }).msg === "string") {
+          const loc = Array.isArray((item as { loc?: unknown }).loc) ? (item as { loc: unknown[] }).loc : [];
+          const field = loc.filter((part) => part !== "body" && part !== "query" && part !== "path").join(".");
+          const msg = (item as { msg: string }).msg;
+          return field ? `${field}: ${msg}` : msg;
+        }
+        return null;
+      })
+      .filter((message): message is string => Boolean(message));
+    if (messages.length) return messages.join("; ");
+  }
+  return `Request failed (${response.status} ${response.statusText})`;
+}
+
 async function request<T>(
   path: string,
   init: RequestInit = {},
@@ -305,10 +326,7 @@ async function request<T>(
   const data = (await parseJsonSafe(response)) as JsonRecord | null;
 
   if (!response.ok) {
-    const detail =
-      typeof data?.detail === "string"
-        ? data.detail
-        : `Request failed (${response.status} ${response.statusText})`;
+    const detail = extractErrorDetail(data, response);
     if (response.status === 401) {
       logout();
       if (typeof window !== "undefined" && window.location.pathname !== "/login") {
@@ -661,8 +679,8 @@ export async function deletePost(postId: number): Promise<void> {
   await request<unknown>(`/posts/${postId}`, { method: "DELETE" }, { auth: true, json: true });
 }
 
-export async function vote(postId: number, dir: 0 | 1): Promise<{ message: string }> {
-  return request<{ message: string }>(
+export async function vote(postId: number, dir: 0 | 1): Promise<{ voted: boolean; vote_count: number }> {
+  return request<{ voted: boolean; vote_count: number }>(
     "/vote/",
     {
       method: "POST",

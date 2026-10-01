@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, use, useEffect, useState } from "react";
 import {
   ApiError,
   createConversation,
@@ -28,8 +28,9 @@ import { Empty, ErrorBanner, Loading } from "../../components/Feedback";
 
 type Tab = "posts" | "replies" | "media" | "likes";
 
-export default function UsernameProfilePage({ params }: { params: { username: string } }) {
-  const username = decodeURIComponent(params.username);
+export default function UsernameProfilePage({ params }: { params: Promise<{ username: string }> }) {
+  const { username: rawUsername } = use(params);
+  const username = decodeURIComponent(rawUsername);
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [posts, setPosts] = useState<Awaited<ReturnType<typeof getProfilePosts>>>([]);
@@ -119,7 +120,7 @@ export default function UsernameProfilePage({ params }: { params: { username: st
     </section>
     {isPrivate ? <section className="vf-card p-8 text-center"><p className="vf-eyebrow">@{profile.user.username}</p><h2 className="mt-2 text-xl font-semibold">This account is private</h2><p className="mt-2 text-sm text-slate-400">Follow to see their posts and communities.</p></section> : <>
       <div className="flex gap-5 border-b border-white/10">{(["posts", "replies", "media", "likes"] as Tab[]).map((tab) => <button key={tab} className={`pb-3 text-sm capitalize ${activeTab === tab ? "border-b-2 border-[hsl(var(--accent))] text-white" : "text-slate-400"}`} onClick={() => setActiveTab(tab)}>{tab}</button>)}</div>
-      {error ? <ErrorBanner message={error} /> : null}{tabLoading ? <Loading label="Loading profile activity..." /> : activeTab === "replies" ? <div className="space-y-3">{replies.map((reply) => <article key={reply.id} className="vf-card p-4"><p className="text-sm text-slate-300">{reply.content}</p><p className="mt-2 text-xs text-slate-500">@{reply.owner?.username || profile.user.username} · {new Date(reply.created_at).toLocaleDateString()}</p></article>)}{!replies.length ? <Empty title="No replies yet" /> : null}</div> : activeTab === "media" ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{media.map((item) => <a key={item.id} href={resolveApiUrl(item.url) ?? undefined} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border border-white/10 bg-white/5">{item.media_type === "video" ? <video src={resolveApiUrl(item.url) ?? undefined} controls className="aspect-square w-full object-cover" /> : <img src={resolveApiUrl(item.url) ?? undefined} alt="Profile media" loading="lazy" className="aspect-square w-full object-cover" />}</a>)}{!media.length ? <Empty title="No media yet" /> : null}</div> : <div className="space-y-4">{visiblePosts.map((post) => <PostCard key={post.Post.id} postId={post.Post.id} title={post.Post.title} content={post.Post.content} votes={post.votes} postedBy={post.Post.owner?.display_name || post.Post.owner?.username || "User"} ownerId={post.Post.owner_id} ownerUsername={post.Post.owner?.username} ownerAvatarUrl={post.Post.owner?.avatar_url} postedAt={new Date(post.Post.created_at).toLocaleDateString()} imageUrl={post.Post.image_url} videoUrl={post.Post.video_url} media={post.Post.media} />)}{!visiblePosts.length ? <Empty title={`No ${activeTab} yet`} /> : null}</div>}
+      {error ? <ErrorBanner message={error} /> : null}{tabLoading ? <Loading label="Loading profile activity..." /> : activeTab === "replies" ? <div className="space-y-3">{replies.map((reply) => <article key={reply.id} className="vf-card p-4"><p className="text-sm text-slate-300">{reply.content}</p><p className="mt-2 text-xs text-slate-500">@{reply.owner?.username || profile.user.username} · {new Date(reply.created_at).toLocaleDateString()}</p></article>)}{!replies.length ? <Empty title="No replies yet" /> : null}</div> : activeTab === "media" ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{media.map((item) => <a key={item.id} href={resolveApiUrl(item.url) ?? undefined} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border border-white/10 bg-white/5">{item.media_type === "video" ? <video src={resolveApiUrl(item.url) ?? undefined} controls className="aspect-square w-full object-cover" /> : <img src={resolveApiUrl(item.url) ?? undefined} alt="Profile media" loading="lazy" className="aspect-square w-full object-cover" />}</a>)}{!media.length ? <Empty title="No media yet" /> : null}</div> : <div className="space-y-4">{visiblePosts.map((post) => <PostCard key={post.Post.id} postId={post.Post.id} title={post.Post.title} content={post.Post.content} votes={post.votes} voted={post.voted} postedBy={post.Post.owner?.display_name || post.Post.owner?.username || "User"} ownerId={post.Post.owner_id} ownerUsername={post.Post.owner?.username} ownerAvatarUrl={post.Post.owner?.avatar_url} postedAt={new Date(post.Post.created_at).toLocaleDateString()} imageUrl={post.Post.image_url} videoUrl={post.Post.video_url} media={post.Post.media} />)}{!visiblePosts.length ? <Empty title={`No ${activeTab} yet`} /> : null}</div>}
       {showCommunities ? <section><h2 className="mb-3 text-xl font-semibold">Communities</h2>{communities.length ? <div className="grid gap-3 sm:grid-cols-2">{communities.map((community) => <Link key={community.id} href={`/communities/${encodeURIComponent(community.slug || String(community.id))}`} className="vf-card vf-card-link p-4"><strong>{community.name}</strong><p className="mt-1 text-sm text-slate-400">{community.description}</p></Link>)}</div> : <Empty title="No communities yet" />}</section> : null}
     </>}
     {connectionKind ? <ProfileConnections username={username} kind={connectionKind} onClose={() => setConnectionKind(null)} /> : null}

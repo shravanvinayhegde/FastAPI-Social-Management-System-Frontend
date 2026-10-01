@@ -11,6 +11,7 @@ type PostCardProps = {
   title: string;
   content: string;
   votes: number;
+  voted?: boolean;
   postId: number;
   postedBy: string;
   postedAt: string;
@@ -29,6 +30,7 @@ export default function PostCard({
   title,
   content,
   votes,
+  voted = false,
   postId,
   postedBy,
   postedAt,
@@ -43,6 +45,7 @@ export default function PostCard({
   media = [],
 }: PostCardProps) {
   const [currentVotes, setCurrentVotes] = useState(votes);
+  const [hasVoted, setHasVoted] = useState(voted);
   const [isVoting, setIsVoting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -69,8 +72,9 @@ export default function PostCard({
     setError("");
 
     try {
-      await vote(postId, dir);
-      setCurrentVotes((prev) => (dir === 1 ? prev + 1 : Math.max(0, prev - 1)));
+      const status = await vote(postId, dir);
+      setCurrentVotes(status.vote_count);
+      setHasVoted(status.voted);
     } catch (voteError) {
       const message = voteError instanceof Error ? voteError.message : "Unable to submit vote.";
       setError(message);
@@ -159,6 +163,7 @@ export default function PostCard({
         <div className="hidden sm:flex sm:flex-col sm:items-center">
           <VoteRail
             votes={currentVotes}
+            hasVoted={hasVoted}
             onUpvote={() => void handleVote(1)}
             onRemove={() => void handleVote(0)}
             isVoting={isVoting}
@@ -240,6 +245,7 @@ export default function PostCard({
               <div className="mt-3 sm:hidden">
                 <VoteRail
                   votes={currentVotes}
+                  hasVoted={hasVoted}
                   onUpvote={() => void handleVote(1)}
                   onRemove={() => void handleVote(0)}
                   isVoting={isVoting}
