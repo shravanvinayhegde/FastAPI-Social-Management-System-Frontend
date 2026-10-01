@@ -38,7 +38,10 @@ export default function Composer({ onCreate, communityId }: ComposerProps) {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !content.trim()) return;
+    if (!content.trim()) {
+      setError("Content cannot be blank.");
+      return;
+    }
     setIsSubmitting(true);
     setError("");
     try {
