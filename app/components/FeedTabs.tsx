@@ -1,31 +1,22 @@
 "use client";
 
-import React from "react";
+type Mode = "new" | "top";
+type FeedTabsProps = { mode: Mode; onChange: (mode: Mode) => void };
 
-type FeedTabsProps = {
-  mode: "new" | "top";
-  onChange: (mode: "new" | "top") => void;
-};
+const TABS: { id: Mode; label: string }[] = [
+  { id: "new", label: "New" },
+  { id: "top", label: "Top" },
+];
 
+/** Sticky, full-width, 48px-high underline tabs (the pattern used by X "For you/Following"). */
 export default function FeedTabs({ mode, onChange }: FeedTabsProps) {
   return (
-    <div className="flex items-center gap-2">
-      <button
-        className={`rounded-full px-3 py-1 text-sm font-medium ${
-          mode === "new" ? "bg-cyan-500 text-white" : "bg-white/5 text-slate-200"
-        }`}
-        onClick={() => onChange("new")}
-      >
-        New
-      </button>
-      <button
-        className={`rounded-full px-3 py-1 text-sm font-medium ${
-          mode === "top" ? "bg-cyan-500 text-white" : "bg-white/5 text-slate-200"
-        }`}
-        onClick={() => onChange("top")}
-      >
-        Top
-      </button>
+    <div className="vfx-tabs" role="tablist" aria-label="Sort posts">
+      {TABS.map((t) => (
+        <button key={t.id} type="button" role="tab" aria-selected={mode === t.id} onClick={() => onChange(t.id)}>
+          {t.label}
+        </button>
+      ))}
     </div>
   );
 }

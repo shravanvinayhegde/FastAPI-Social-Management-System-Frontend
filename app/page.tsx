@@ -1,178 +1,110 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import PostCard from "./components/PostCard";
 import Composer from "./components/Composer";
 import FeedTabs from "./components/FeedTabs";
-// useSearchParams avoided to prevent prerender/suspense issues; use window.location in client effect
-import { Loading, Empty, ErrorBanner } from "./components/Feedback";
-import {
-  createPost,
-  deletePost,
-  getPosts,
-  getToken,
-  logout,
-  PostWithVotes,
-  updatePost,
-} from "../lib/api";
-import BottomNav from "./components/BottomNav";
+import SideNav from "./components/SideNav";
+import { ColdStartNotice, Empty, ErrorBanner, PostSkeletonList } from "./components/Feedback";
+import { ArrowUpIcon } from "./components/Icons";
+import { deletePost, getPosts, getToken, PostWithVotes, updatePost } from "../lib/api";
 import { useAuth } from "./components/AuthProvider";
 
-function formatPostedTime(timestamp: string): string {
-  if (!timestamp) {
-    return "Unknown time";
-  }
+const PAGE_SIZE = 20;
 
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) {
-    return "Unknown time";
-  }
-
-  return new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
-
-export default function HomePage() {
+function HomeFeed() {
   const router = useRouter();
+  const params = useSearchParams();
+  const q = params.get("q") ?? "";            // reactive: the old code read window.location once, so header search did nothing on "/"
   const { currentUser } = useAuth();
+
   const [posts, setPosts] = useState<PostWithVotes[]>([]);
+  const [mode, setMode] = useState<"new" | "top">("new");
   const [isLoading, setIsLoading] = useState(true);
-  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState("");
-  const currentUserId = currentUser?.id ?? null;
-  const currentUsername = currentUser?.username ?? null;
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const generation = useRef(0);               // drops responses from a stale query
+
+  // First page (re-runs whenever ?q= changes)
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-    const loadPosts = async (opts: { limit?: number; skip?: number; search?: string } = {}) => {
-      setIsLoading(true);
-      setError("");
-      try {
-        const response = await getPosts(opts);
-        setPosts(response);
-      } catch (loadError) {
-        const message =
-          loadError instanceof Error ? loadError.message : "Unable to load posts right now.";
-        setError(message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (!getToken()) { router.push("/login"); return; }
+    const gen = ++generation.current;
+    setIsLoading(true); setError(""); setHasMore(true);
+    getPosts({ ...(q ? { search: q } : {}), limit: PAGE_SIZE, skip: 0 })
+      .then((res) => { if (gen !== generation.current) return; setPosts(res); setHasMore(res.length === PAGE_SIZE); })
+      .catch((e) => { if (gen === generation.current) setError(e instanceof Error ? e.message : "Unable to load posts right now."); })
+      .finally(() => { if (gen === generation.current) setIsLoading(false); });
+  }, [q, router]);
 
-    const q = typeof window !== "undefined" ? new URL(window.location.href).searchParams.get("q") ?? "" : "";
-    if (q) {
-      void loadPosts({ search: q, limit: 50, skip: 0 });
-    } else {
-      void loadPosts({ limit: 20, skip: 0 });
+  // Next pages: the old feed requested skip=0 only, so posts #21+ were unreachable.
+  const loadMore = useCallback(async () => {
+    if (isLoading || isLoadingMore || !hasMore || error) return;
+    const gen = generation.current;
+    setIsLoadingMore(true);
+    try {
+      const res = await getPosts({ ...(q ? { search: q } : {}), limit: PAGE_SIZE, skip: posts.length });
+      if (gen !== generation.current) return;
+      setPosts((prev) => { const seen = new Set(prev.map((p) => p.Post.id)); return [...prev, ...res.filter((p) => !seen.has(p.Post.id))]; });
+      setHasMore(res.length === PAGE_SIZE);
+    } catch (e) {
+      if (gen === generation.current) setError(e instanceof Error ? e.message : "Unable to load more posts.");
+    } finally {
+      setIsLoadingMore(false);
     }
-  }, [router]);
+  }, [isLoading, isLoadingMore, hasMore, error, q, posts.length]);
 
   useEffect(() => {
-    const handleWindowScroll = () => {
-      setShowScrollTop(window.scrollY > 260);
-    };
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => { if (entries[0].isIntersecting) void loadMore(); }, { rootMargin: "600px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [loadMore]);
 
-    handleWindowScroll();
-    window.addEventListener("scroll", handleWindowScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("scroll", handleWindowScroll);
-    };
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 600);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const handleDeletePost = async (postId: number) => {
-    await deletePost(postId);
-    setPosts((prev) => prev.filter((post) => post.Post.id !== postId));
-  };
-
+  const handleDeletePost = async (postId: number) => { await deletePost(postId); setPosts((prev) => prev.filter((p) => p.Post.id !== postId)); };
   const handleUpdatePost = async (postId: number, nextTitle: string, nextContent: string) => {
     const updated = await updatePost(postId, nextTitle, nextContent, true);
-    setPosts((prev) =>
-      prev.map((post) => (post.Post.id === postId ? { ...post, Post: updated } : post))
-    );
+    setPosts((prev) => prev.map((p) => (p.Post.id === postId ? { ...p, Post: updated } : p)));
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push("/login");
-  };
-
-  const handleSearch = async (q: string) => {
-    setIsLoading(true);
-    try {
-      const results = await getPosts({ search: q, limit: 50 });
-      setPosts(results);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Search failed");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const [mode, setMode] = useState<"new" | "top">("new");
-
-  const handleModeChange = (m: "new" | "top") => {
-    setMode(m);
-    if (m === "new") {
-      void (async () => {
-        setIsLoading(true);
-        try {
-          const results = await getPosts({ limit: 20, skip: 0 });
-          setPosts(results);
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Unable to load posts");
-        } finally {
-          setIsLoading(false);
-        }
-      })();
-    } else {
-      // Top: sort client-side by votes
-      setPosts((prev) => [...prev].sort((a, b) => b.votes - a.votes));
-    }
-  };
-
-  const handleScrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  // "Top" sorts the posts already loaded (as before) - derived, so switching tabs costs no request.
+  const visible = mode === "top" ? [...posts].sort((a, b) => b.votes - a.votes) : posts;
 
   return (
-    <main className="min-h-screen px-3 py-5 text-slate-100 sm:px-4 sm:py-8">
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-5 lg:grid-cols-[220px_minmax(0,1fr)_260px]">
-        <aside className="hidden lg:block">
-          <nav className="vf-card sticky top-24 p-3" aria-label="Feed navigation">
-            <p className="vf-eyebrow px-3 py-2">Your space</p>
-            <button onClick={() => handleModeChange("new")} className={`vf-sidebar-link ${mode === "new" ? "vf-sidebar-link-active" : ""}`}>⌂ <span>Home feed</span></button>
-            <button onClick={() => handleModeChange("top")} className={`vf-sidebar-link ${mode === "top" ? "vf-sidebar-link-active" : ""}`}>↟ <span>Trending posts</span></button>
-            <Link href="/communities" className="vf-sidebar-link">◎ <span>Communities</span></Link>
-            <Link href="/messages" className="vf-sidebar-link">◌ <span>Messages</span></Link>
-            <Link href="/notifications" className="vf-sidebar-link">○ <span>Notifications</span></Link>
-            {currentUsername ? <Link href={`/profile/${encodeURIComponent(currentUsername)}`} className="vf-sidebar-link">◉ <span>My profile</span></Link> : null}
-          </nav>
-        </aside>
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,600px)] lg:justify-center xl:grid-cols-[240px_minmax(0,600px)_300px]">
+      <aside className="hidden lg:block"><SideNav /></aside>
 
-        <section className="min-w-0 space-y-5">
-          <header className="vf-page-heading"><div><p className="vf-eyebrow">The community pulse</p><h1>Home feed</h1><p>See what people are sharing and join the conversation.</p></div></header>
-          <div className="vf-tabs-row"><FeedTabs mode={mode} onChange={handleModeChange} /><span className="hidden text-xs text-slate-500 sm:block">{posts.length} posts loaded</span></div>
-          <Composer onCreate={(created) => setPosts((prev) => [{ Post: created, votes: 0 }, ...prev])} />
+      <section className="min-w-0" aria-label="Feed">
+        <h1 className="sr-only">Home feed</h1>
+        <div className="vfx-bleed">
+          <FeedTabs mode={mode} onChange={setMode} />
 
-        {isLoading ? <Loading label="Loading posts..." /> : null}
+          {q ? (
+            <p className="vfx-notice text-left!">
+              Results for <strong>“{q}”</strong> · <Link href="/" className="font-semibold text-[hsl(var(--accent))]">Clear</Link>
+            </p>
+          ) : null}
 
-        {!isLoading && error ? <ErrorBanner message={error} /> : null}
+          <div className="vfx-list md:mt-3">
+            <Composer onCreate={(created) => setPosts((prev) => [{ Post: created, votes: 0 }, ...prev])} />
 
-        {!isLoading && !error && posts.length === 0 ? (
-          <Empty title="No posts yet" message="Be the first to create a post." />
-        ) : null}
+            {isLoading ? <PostSkeletonList /> : null}
+            {!isLoading && error ? <div className="px-4 md:px-0"><ErrorBanner message={error} /></div> : null}
+            {!isLoading && !error && visible.length === 0 ? <Empty title={q ? "No matching posts" : "No posts yet"} message={q ? "Try a different search." : "Be the first to create a post."} /> : null}
 
-        {!isLoading && !error && posts.length > 0 ? (
-          <div className="space-y-4 mx-auto max-w-[700px]">
-            {posts.map((post) => (
+            {visible.map((post) => (
               <PostCard
                 key={post.Post.id}
                 postId={post.Post.id}
@@ -184,42 +116,50 @@ export default function HomePage() {
                 ownerId={post.Post.owner_id}
                 ownerUsername={post.Post.owner?.username}
                 ownerAvatarUrl={post.Post.owner?.avatar_url}
-                postedAt={formatPostedTime(post.Post.created_at)}
+                postedAt=""
+                createdAt={post.Post.created_at}
                 imageUrl={post.Post.image_url}
                 videoUrl={post.Post.video_url}
                 media={post.Post.media}
-                isOwner={currentUserId === post.Post.owner_id}
+                isOwner={currentUser?.id === post.Post.owner_id}
                 onDelete={handleDeletePost}
                 onUpdate={handleUpdatePost}
               />
             ))}
-          </div>
-        ) : null}
 
-        </section>
-
-        <aside className="hidden lg:block">
-          <div className="sticky top-24 space-y-4">
-            <section className="vf-card p-4"><p className="vf-eyebrow">Discover</p><h2 className="mt-2 text-lg font-semibold">Find your people</h2><p className="mt-2 text-sm text-slate-400">Explore communities and connect with members who share your interests.</p><Link href="/communities" className="mt-4 block text-sm font-semibold text-[hsl(var(--accent))]">Browse communities →</Link></section>
-            <section className="vf-card p-4"><p className="vf-eyebrow">Quick links</p><div className="mt-3 space-y-2"><Link className="vf-widget-link" href="/notifications">Your notifications <span>→</span></Link><Link className="vf-widget-link" href="/messages">Open messages <span>→</span></Link>{currentUsername ? <Link className="vf-widget-link" href={`/profile/${encodeURIComponent(currentUsername)}`}>View your profile <span>→</span></Link> : null}</div></section>
+            {isLoadingMore ? <PostSkeletonList count={1} /> : null}
+            <div ref={sentinelRef} aria-hidden style={{ height: 1 }} />
+            {!isLoading && !hasMore && visible.length > 0 ? <p className="vfx-notice">You’re all caught up.</p> : null}
           </div>
-        </aside>
-      </div>
+          <ColdStartNotice active={isLoading} />
+        </div>
+      </section>
+
+      <aside className="hidden xl:block">
+        <div className="vfx-rail">
+          <section className="vf-card p-4">
+            <p className="vf-eyebrow">Discover</p>
+            <h2 className="mt-2 text-lg font-semibold">Find your people</h2>
+            <p className="mt-2 text-sm text-[var(--foreground-muted)]">Explore communities and connect with members who share your interests.</p>
+            <Link href="/communities" className="mt-4 inline-flex min-h-[44px] items-center text-sm font-semibold text-[hsl(var(--accent))]">Browse communities →</Link>
+          </section>
+        </div>
+      </aside>
 
       {showScrollTop ? (
-        <button
-          type="button"
-          onClick={handleScrollToTop}
-          className="vf-btn-primary fixed bottom-4 right-4 z-50 px-3 py-2 text-xs shadow-xl sm:bottom-6 sm:right-6 sm:px-4 sm:py-3 sm:text-sm"
-          aria-label="Scroll to top"
-          title="Scroll to top"
-        >
-          Scroll to top
+        <button type="button" className="vf-btn-primary vfx-fab" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} aria-label="Back to top">
+          <ArrowUpIcon />
         </button>
       ) : null}
+    </div>
+  );
+}
 
-      <BottomNav />
-
-    </main>
+export default function HomePage() {
+  // useSearchParams() requires a Suspense boundary for static prerendering.
+  return (
+    <Suspense fallback={<PostSkeletonList />}>
+      <HomeFeed />
+    </Suspense>
   );
 }

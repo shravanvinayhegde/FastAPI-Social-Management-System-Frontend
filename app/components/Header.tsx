@@ -1,157 +1,95 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Avatar from "./Avatar";
 import ThemeToggle from "./ThemeToggle";
 import SearchBar from "./SearchBar";
-import { useRouter } from "next/navigation";
-import { logout } from "../../lib/api";
-import { useAuth } from "./AuthProvider";
 import ConfirmModal from "./ConfirmModal";
+import { useAuth } from "./AuthProvider";
+import { SearchIcon, CloseIcon } from "./Icons";
+import { logout } from "../../lib/api";
 
 export default function Header() {
-  const { currentUser: user, loading } = useAuth();
-  const isAuthed = Boolean(user);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-
+  const { currentUser: user } = useAuth();
   const router = useRouter();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: Event) => { if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
+  const runSearch = (q: string) => {
+    router.push(q ? `/?q=${encodeURIComponent(q)}` : "/");
+    setSearchOpen(false);
+  };
 
   const handleLogout = () => {
     logout();
     setConfirmOpen(false);
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
-    }
+    window.location.href = "/login";
   };
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-40 border-b border-white/6 bg-transparent backdrop-blur-sm">
-      <div className="vf-container flex items-center justify-between gap-4 py-3">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="text-lg font-semibold" aria-label="Home">
-            <span style={{ color: "hsl(var(--accent))" }}>Vote</span>Flow
-          </Link>
+    <header className="vfx-header">
+      <div className="vfx-header-inner">
+        <Link href="/" className="vfx-logo" aria-label="VoteFlow home"><span>Vote</span>Flow</Link>
+
+        {/* Desktop / tablet search */}
+        <div className="mx-4 hidden min-w-0 flex-1 justify-center md:flex">
+          <div className="w-full max-w-xl"><SearchBar onSearch={runSearch} /></div>
         </div>
 
-        <div className="hidden md:flex md:flex-1 md:justify-center md:px-6">
-          <div className="w-full max-w-2xl">
-            <SearchBar onSearch={(q) => router.push(q ? `/?q=${encodeURIComponent(q)}` : `/`)} />
-          </div>
-        </div>
+        <div className="ml-auto flex items-center gap-1 md:ml-0">
+          {/* Phone search: it was display:none below 768px, so search was impossible on mobile */}
+          <span className="vfx-md-hide">
+            <button type="button" className="vfx-iconbtn" onClick={() => setSearchOpen((s) => !s)} aria-expanded={searchOpen} aria-label={searchOpen ? "Close search" : "Search posts"}>
+              {searchOpen ? <CloseIcon /> : <SearchIcon />}
+            </button>
+          </span>
 
-        <div className="flex items-center gap-3">
           <ThemeToggle />
 
-          {isAuthed ? (
-            <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary navigation">
-              <Link className="vf-nav-link" href="/communities">Communities</Link>
-              <Link className="vf-nav-link" href="/messages">Messages</Link>
-              <Link className="vf-nav-link" href="/notifications">Notifications</Link>
-            </nav>
-          ) : null}
-
-          <div className="hidden md:flex md:items-center md:gap-3">
-            {isAuthed && user ? (
-              <div className="relative flex items-center gap-2">
-                <Link href={`/profile/${encodeURIComponent(user.username)}`} className="flex items-center gap-2" aria-label="Open my profile">
-                  <Avatar size={36} email={user.email} id={user.id} avatarUrl={user.avatar_url} />
-                  <div className="hidden lg:block">
-                    <div className="text-sm font-medium text-slate-200 truncate max-w-[12rem]">
-                      {user.display_name || user.username || user.email}
-                    </div>
-                    <div className="text-xs text-slate-400">@{user.username}</div>
-                  </div>
-                </Link>
-                <button
-                  type="button"
-                  className="vf-btn-secondary px-3 py-1 text-sm"
-                  onClick={() => setConfirmOpen(true)}
-                  aria-label="Log out"
-                  title="Log out"
-                >
-                  Log out
-                </button>
-              </div>
-            ) : isAuthed && loading ? (
-              <div className="h-9 w-9 rounded-full bg-slate-700 animate-pulse" />
-            ) : (
-              <Link href="/login">
-                <button className="vf-btn-secondary px-3 py-1 text-sm">Sign in</button>
-              </Link>
-            )}
-          </div>
-
-          <button
-            type="button"
-            className="md:hidden vf-btn-secondary px-2 py-1"
-            onClick={() => setMobileOpen((s) => !s)}
-            aria-expanded={mobileOpen}
-            aria-controls="mobile-menu"
-            title="Menu"
-          >
-            {mobileOpen ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M6 18L18 6M6 6l12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </button>
+          {user ? (
+            <div className="relative" ref={menuRef}>
+              <button type="button" className="vfx-iconbtn" onClick={() => setMenuOpen((s) => !s)} aria-haspopup="menu" aria-expanded={menuOpen} aria-label="Account menu">
+                <Avatar size={32} email={user.email} id={user.id} avatarUrl={user.avatar_url} />
+              </button>
+              {menuOpen ? (
+                <div className="vfx-menu" role="menu">
+                  <Link role="menuitem" href={`/profile/${encodeURIComponent(user.username)}`} onClick={() => setMenuOpen(false)}>
+                    <span className="min-w-0 truncate">{user.display_name || user.username}</span>
+                  </Link>
+                  <Link role="menuitem" href="/communities" onClick={() => setMenuOpen(false)}>Communities</Link>
+                  <button role="menuitem" type="button" className="vfx-danger" onClick={() => { setMenuOpen(false); setConfirmOpen(true); }}>Log out</button>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <Link href="/login" className="vf-btn-secondary inline-flex min-h-[44px] items-center px-4 text-sm">Sign in</Link>
+          )}
         </div>
       </div>
 
-      {mobileOpen ? (
-        <div id="mobile-menu" className="md:hidden border-t border-white/6 bg-transparent backdrop-blur-sm">
-          <div className="vf-container flex flex-col gap-2 px-4 py-3">
-            <Link href="/" onClick={() => setMobileOpen(false)} className="text-sm text-slate-200">
-              Feed
-            </Link>
-            {isAuthed ? (
-              <>
-                <Link href="/communities" onClick={() => setMobileOpen(false)} className="text-sm text-slate-200">Communities</Link>
-                <Link href="/messages" onClick={() => setMobileOpen(false)} className="text-sm text-slate-200">Messages</Link>
-                <Link href="/notifications" onClick={() => setMobileOpen(false)} className="text-sm text-slate-200">Notifications</Link>
-              </>
-            ) : null}
-            {!isAuthed ? (
-              <Link href="/login" onClick={() => setMobileOpen(false)} className="text-sm text-slate-200">
-                Sign in
-              </Link>
-            ) : user ? (
-              <>
-                <Link href={`/profile/${encodeURIComponent(user.username)}`} onClick={() => setMobileOpen(false)} className="flex items-center gap-2" aria-label="Open my profile">
-                  <Avatar size={32} email={user.email} id={user.id} />
-                  <span className="text-sm text-slate-200">{user.display_name || user.username}</span>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileOpen(false);
-                    setConfirmOpen(true);
-                  }}
-                  className="text-left text-sm text-slate-200"
-                >
-                  Log out
-                </button>
-              </>
-            ) : null}
-          </div>
-        </div>
+      {searchOpen ? (
+        <div className="vfx-searchrow md:hidden"><SearchBar onSearch={runSearch} autoFocus /></div>
       ) : null}
 
-      <ConfirmModal
-        open={confirmOpen}
-        title="Log out"
-        description="Are you sure you want to log out?"
-        confirmLabel="Log out"
-        cancelLabel="Cancel"
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={handleLogout}
-      />
+      <ConfirmModal open={confirmOpen} title="Log out" description="Are you sure you want to log out?" confirmLabel="Log out" cancelLabel="Cancel" onCancel={() => setConfirmOpen(false)} onConfirm={handleLogout} />
     </header>
   );
 }

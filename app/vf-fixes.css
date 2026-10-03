@@ -1,0 +1,288 @@
+/* ==========================================================================
+   VoteFlow – standards & mobile fixes
+   Import AFTER globals.css (see layout.tsx). Presentation only: no API,
+   routing or backend contract is touched.
+   ========================================================================== */
+
+/* ---------- 1. Layout / type tokens ------------------------------------- */
+:root {
+  --vf-header-h: 56px;      /* top bar: X / Reddit / Facebook use 53–56px   */
+  --vf-tabbar-h: 56px;      /* bottom bar: iOS 49pt, Material 56–80dp       */
+  --vf-gutter: 16px;
+
+  --vfx-danger: #fb7185;                  /* rose-400: 7:1 on the dark surface */
+  --vfx-badge: #e11d48;                   /* white text on this = 4.7:1 */
+  --vfx-surface: #0a1226;
+  --vfx-surface-solid: #0a1226;
+  --vfx-border: rgba(148, 163, 184, 0.2);
+  --vfx-text: var(--foreground);
+  --vfx-text-strong: #f8fafc;
+  --vfx-media-bg: #000;
+  --vfx-header-bg: rgba(2, 6, 23, 0.88);
+  --vfx-tabbar-bg: rgba(2, 6, 23, 0.96);
+}
+
+/* ---------- 2. LIGHT THEME REPAIR --------------------------------------- *
+ * Root cause: the light theme set `--accent: 37 99 235` (RGB) but every
+ * consumer reads it as `hsl(var(--accent))` or `rgba(var(--accent), a)`.
+ *   hsl(37 99 235)       -> lightness 235% -> clamps to WHITE
+ *   rgba(37 99 235, .5)  -> invalid syntax -> whole declaration dropped
+ * Result: logo, links, eyebrow text and every primary button background
+ * vanished in light mode. Use the same H S% L% format as dark mode.        */
+:root[data-theme="light"] {
+  --accent: 221 83% 53%;                 /* #2563eb */
+  --vfx-danger: #be123c;
+  --vfx-badge: #be123c;
+  --vfx-surface: #ffffff;
+  --vfx-surface-solid: #ffffff;
+  --vfx-border: rgba(15, 23, 42, 0.12);
+  --vfx-text-strong: #0b1723;
+  --vfx-media-bg: #e2e8f0;
+  --vfx-header-bg: rgba(240, 244, 252, 0.92);
+  --vfx-tabbar-bg: rgba(255, 255, 255, 0.97);
+}
+
+/* Replace the five `rgba(var(--accent), …)` rules in globals.css */
+:root[data-theme="light"] .vf-btn-primary {
+  background: hsl(var(--accent));
+  color: #fff;                                   /* 5.2:1 on #2563eb */
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 6px 16px hsl(var(--accent) / 0.25);
+}
+:root[data-theme="light"] .vf-btn-primary:hover { background: hsl(221 83% 46%); }
+:root[data-theme="light"] input:focus,
+:root[data-theme="light"] textarea:focus,
+:root[data-theme="light"] select:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px hsl(var(--accent) / 0.14);
+  border-color: hsl(var(--accent) / 0.45);
+}
+
+/* Components hard-code text-white / text-slate-* (made for dark). Outside
+   .vf-card nothing remapped them, so author names, headings, vote counts and
+   tabs rendered white-on-white (contrast 1.1:1). Global safety net:        */
+:root[data-theme="light"] :is(.text-white, .text-slate-100) { color: var(--foreground); }
+:root[data-theme="light"] :is(.text-slate-200, .text-slate-300) { color: #334155; }
+:root[data-theme="light"] :is(.text-slate-400, .text-slate-500) { color: var(--foreground-muted); }
+
+.vf-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ---------- 3. Global quality-of-life ----------------------------------- */
+body { min-height: 100dvh; }                         /* 100vh jumps under mobile URL bars */
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
+  outline: 2px solid hsl(var(--accent));
+  outline-offset: 2px;
+}
+.vfx-skip { position: absolute; left: 8px; top: -48px; z-index: 100; padding: 10px 14px; border-radius: 8px; background: hsl(var(--accent)); color: #fff; font-weight: 600; }
+.vfx-skip:focus { top: 8px; }
+
+/* Hover "lift" sticks after a tap on touch screens and makes lists jump */
+@media (hover: none) {
+  .vf-card:hover, .vf-card-link:hover,
+  .vf-btn-primary:hover, .vf-btn-secondary:hover, .vf-btn-danger:hover { transform: none; }
+}
+/* backdrop-filter on many layers is the #1 scroll-jank cause on mid-range Android */
+@media (max-width: 767px) {
+  :root .vf-card, :root[data-theme] .vf-card, :root[data-theme] .vf-btn-secondary {
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+  }
+}
+
+/* Headings: 28.8px H1 on a phone is hero-sized; apps use 20–24px */
+.vf-page-heading h1 { font-size: clamp(1.5rem, 1.15rem + 1.2vw, 2.25rem); }
+.vf-eyebrow { font-size: 0.75rem; }                  /* 12px floor */
+
+/* ---------- 4. App shell (ONE <main>, header-safe, tab-bar-safe) -------- */
+.vfx-main {
+  width: 100%; max-width: 1280px; margin-inline: auto;
+  padding-inline: var(--vf-gutter);
+  padding-top: calc(var(--vf-header-h) + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(var(--vf-tabbar-h) + env(safe-area-inset-bottom, 0px) + 24px);
+}
+@media (min-width: 768px) {
+  .vfx-main { padding-top: calc(var(--vf-header-h) + 24px); padding-bottom: 48px; }
+}
+/* Let the feed run edge-to-edge on phones (Instagram / X / Reddit mobile) */
+.vfx-bleed { margin-inline: calc(var(--vf-gutter) * -1); }
+@media (min-width: 768px) { .vfx-bleed { margin-inline: 0; } }
+
+/* ---------- 5. Header ---------------------------------------------------- */
+.vfx-header {
+  position: fixed; inset: 0 0 auto 0; z-index: 40;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: var(--vfx-header-bg);
+  border-bottom: 1px solid var(--vfx-border);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+.vfx-header-inner {
+  display: flex; align-items: center; gap: 8px;
+  height: calc(var(--vf-header-h) - 1px); max-width: 1280px; margin-inline: auto; padding-inline: var(--vf-gutter);
+}
+.vfx-logo { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; color: var(--vfx-text-strong); }
+.vfx-logo span { color: hsl(var(--accent)); }
+.vfx-iconbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; flex: none; border: 0; border-radius: 999px; background: transparent;
+  color: var(--foreground-muted); cursor: pointer;
+}
+.vfx-iconbtn:hover, .vfx-iconbtn:focus-within { color: var(--foreground); background: color-mix(in srgb, var(--foreground) 10%, transparent); }
+.vfx-iconbtn.vfx-accent { color: hsl(var(--accent)); }
+.vfx-md-hide { display: contents; }
+@media (min-width: 768px) { .vfx-md-hide { display: none; } }
+.vfx-searchrow { border-top: 1px solid var(--vfx-border); padding: 8px var(--vf-gutter); }
+
+.vfx-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; min-width: 176px; padding: 6px;
+  background: var(--vfx-surface-solid); border: 1px solid var(--vfx-border); border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(2, 6, 23, 0.35);
+}
+.vfx-menu > :is(a, button) {
+  display: flex; align-items: center; width: 100%; min-height: 44px; padding: 0 12px;
+  border: 0; border-radius: 8px; background: none; text-align: left; font-size: 0.9375rem; color: var(--vfx-text);
+}
+.vfx-menu > :is(a, button):hover { background: color-mix(in srgb, var(--foreground) 8%, transparent); }
+.vfx-menu .vfx-danger { color: var(--vfx-danger); }
+
+/* ---------- 6. Bottom tab bar (mobile only, max 5 destinations) --------- */
+.vfx-tabbar {
+  position: fixed; inset: auto 0 0 0; z-index: 50;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--vfx-tabbar-bg); border-top: 1px solid var(--vfx-border);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+.vfx-tabbar ul { display: grid; grid-template-columns: repeat(5, 1fr); height: var(--vf-tabbar-h); max-width: 560px; margin: 0 auto; padding: 0; list-style: none; }
+.vfx-tab {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  height: 100%; min-width: 44px; font-size: 0.75rem; font-weight: 600; line-height: 1; color: var(--foreground-muted);
+}
+.vfx-tab[aria-current="page"] { color: hsl(var(--accent)); }
+.vfx-badge {
+  position: absolute; top: 6px; left: calc(50% + 4px); min-width: 18px; height: 18px; padding: 0 5px;
+  display: inline-flex; align-items: center; justify-content: center; border-radius: 999px;
+  background: var(--vfx-badge); color: #fff; font-size: 0.75rem; font-weight: 700;
+}
+@media (min-width: 768px) { .vfx-tabbar { display: none; } }
+
+/* ---------- 7. Feed tabs (sticky, full width, 48px) --------------------- */
+.vfx-tabs {
+  position: sticky; top: calc(var(--vf-header-h) + env(safe-area-inset-top, 0px)); z-index: 30;
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  background: var(--vfx-header-bg); border-bottom: 1px solid var(--vfx-border);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+.vfx-tabs button {
+  position: relative; min-height: 48px; border: 0; background: none; cursor: pointer;
+  font-size: 0.9375rem; font-weight: 600; color: var(--foreground-muted);
+}
+.vfx-tabs button[aria-selected="true"] { color: var(--vfx-text-strong); }
+.vfx-tabs button[aria-selected="true"]::after {
+  content: ""; position: absolute; left: 50%; bottom: 0; width: 56px; height: 3px; transform: translateX(-50%);
+  border-radius: 3px 3px 0 0; background: hsl(var(--accent));
+}
+@media (min-width: 768px) { .vfx-tabs { top: var(--vf-header-h); border-radius: 12px 12px 0 0; } }
+
+/* ---------- 8. Feed list + post card ------------------------------------ */
+.vfx-list { display: flex; flex-direction: column; gap: 0; }          /* phones: flat feed with 1px dividers */
+@media (min-width: 768px) { .vfx-list { gap: 12px; } }              /* tablet+: separate cards */
+
+.vfx-post {
+  background: var(--vfx-surface); border-bottom: 1px solid var(--vfx-border);
+  padding: 12px var(--vf-gutter) 4px; color: var(--vfx-text);
+}
+@media (min-width: 768px) { .vfx-post { border: 1px solid var(--vfx-border); border-radius: 12px; padding: 16px 16px 6px; } }
+
+.vfx-author { font-size: 0.9375rem; font-weight: 600; color: var(--vfx-text-strong); }
+a.vfx-author:hover { text-decoration: underline; }
+.vfx-meta { font-size: 0.8125rem; line-height: 1.25; color: var(--foreground-muted); }       /* 13px */
+.vfx-title { margin: 10px 0 0; font-size: 1.125rem; line-height: 1.35; font-weight: 700; color: var(--vfx-text-strong); overflow-wrap: anywhere; }
+.vfx-title a:hover { text-decoration: underline; }
+.vfx-body { margin: 6px 0 0; font-size: 1rem; line-height: 1.5; color: var(--vfx-text); white-space: pre-wrap; overflow-wrap: anywhere; }  /* 16/24 */
+.vfx-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 8; line-clamp: 8; overflow: hidden; }
+.vfx-more { margin-top: 4px; min-height: 32px; border: 0; background: none; padding: 0; font-size: 0.9375rem; font-weight: 600; color: hsl(var(--accent)); cursor: pointer; }
+
+.vfx-media { margin-top: 12px; display: grid; gap: 8px; }
+.vfx-media :is(img, video) {
+  display: block; width: 100%; height: auto; max-height: min(75dvh, 640px);
+  object-fit: contain; background: var(--vfx-media-bg);
+  border: 1px solid var(--vfx-border); border-radius: 12px;
+}
+
+.vfx-actions { display: flex; align-items: center; gap: 4px; margin: 6px -12px 0; }
+.vfx-action {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px;
+  border: 0; border-radius: 999px; background: transparent; cursor: pointer;
+  font-size: 0.875rem; font-weight: 600; color: var(--foreground-muted);
+}
+.vfx-action svg { width: 20px; height: 20px; }
+.vfx-action:hover { color: var(--foreground); background: color-mix(in srgb, var(--foreground) 10%, transparent); }
+.vfx-action:disabled { opacity: 0.6; }
+.vfx-vote[aria-pressed="true"] { color: hsl(var(--accent)); background: hsl(var(--accent) / 0.12); }
+
+/* Bottom sheet on phones, centred dialog from 640px (used by Share) */
+.vfx-sheet-backdrop { position: fixed; inset: 0; z-index: 80; background: rgba(2, 6, 23, 0.6); }
+.vfx-sheet {
+  position: fixed; z-index: 81; left: 0; right: 0; bottom: 0; max-height: 85dvh; overflow: auto;
+  padding: 16px var(--vf-gutter) calc(16px + env(safe-area-inset-bottom, 0px));
+  background: var(--vfx-surface-solid); color: var(--vfx-text); border-radius: 16px 16px 0 0;
+}
+@media (min-width: 640px) {
+  .vfx-sheet { left: 50%; right: auto; top: 50%; bottom: auto; width: min(440px, 92vw); transform: translate(-50%, -50%); border-radius: 16px; }
+}
+
+/* ---------- 9. Composer -------------------------------------------------- */
+.vfx-composer { background: var(--vfx-surface); border-bottom: 1px solid var(--vfx-border); padding: 12px var(--vf-gutter); }
+@media (min-width: 768px) { .vfx-composer { border: 1px solid var(--vfx-border); border-radius: 12px; } }
+.vfx-composer-pill {
+  flex: 1; min-height: 44px; padding: 0 16px; text-align: left; cursor: text;
+  border: 1px solid var(--vfx-border); border-radius: 999px; background: transparent;
+  font-size: 1rem; color: var(--foreground-muted);
+}
+.vfx-field {
+  display: block; width: 100%; padding: 8px 0; border: 0; outline: 0; resize: none; background: transparent;
+  font-size: 1rem; line-height: 1.5; color: var(--vfx-text-strong);              /* 16px: no iOS focus-zoom */
+}
+.vfx-field::placeholder { color: var(--foreground-muted); }
+.vfx-title-field { font-size: 1.125rem; font-weight: 700; border-bottom: 1px solid var(--vfx-border); }
+.vfx-count { font-size: 0.8125rem; color: var(--foreground-muted); font-variant-numeric: tabular-nums; }
+.vfx-count[data-warn="true"] { color: var(--vfx-danger); font-weight: 600; }
+
+/* thumbnail "remove" badge in the composer */
+.vfx-remove, .vfx-remove:hover { position: absolute; top: -8px; right: -8px; width: 36px; height: 36px; background: rgba(0, 0, 0, 0.72); color: #fff; }
+
+/* ---------- 10. Floating "back to top" (clears the tab bar) ------------- */
+.vfx-fab {
+  position: fixed; right: 16px; z-index: 45; width: 48px; height: 48px; border-radius: 999px;
+  bottom: calc(var(--vf-tabbar-h) + env(safe-area-inset-bottom, 0px) + 16px);
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+@media (min-width: 768px) { .vfx-fab { bottom: 24px; right: 24px; } }
+
+/* ---------- 11. Loading states ------------------------------------------- */
+.vfx-skel {
+  border-radius: 6px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--foreground) 7%, transparent) 25%, color-mix(in srgb, var(--foreground) 14%, transparent) 37%, color-mix(in srgb, var(--foreground) 7%, transparent) 63%);
+  background-size: 400% 100%; animation: vfx-shimmer 1.4s ease infinite;
+}
+@keyframes vfx-shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+.vfx-notice { padding: 12px var(--vf-gutter); font-size: 0.875rem; color: var(--foreground-muted); text-align: center; }
+
+/* ---------- 12. Desktop rails -------------------------------------------- */
+.vfx-rail { position: sticky; top: calc(var(--vf-header-h) + 24px); align-self: start; }
+.vfx-railink {
+  display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 14px; border-radius: 999px;
+  font-size: 1.0625rem; font-weight: 500; color: var(--foreground);
+}
+.vfx-railink:hover { background: color-mix(in srgb, var(--foreground) 8%, transparent); }
+.vfx-railink[aria-current="page"] { font-weight: 700; color: hsl(var(--accent)); }
+
+/* ---------- 13. Chat page: dynamic viewport + bounded scroll area -------- */
+.vfx-chat {
+  display: flex; flex-direction: column; gap: 12px; margin-inline: auto; max-width: 48rem; min-height: 420px;
+  height: calc(100dvh - var(--vf-header-h) - var(--vf-tabbar-h) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 36px);
+}
+@media (min-width: 768px) { .vfx-chat { height: calc(100dvh - var(--vf-header-h) - 72px); } }

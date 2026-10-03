@@ -40,9 +40,9 @@ export default function RegisterPage() {
   if (isCheckingAuth) return null;
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6">
+    <div className="flex min-h-[calc(100dvh-8rem)] items-center justify-center py-4">
       <div className="w-full max-w-md">
-        <div className="vf-card p-8">
+        <div className="vf-card p-5 sm:p-8">
           <h1 className="text-2xl font-semibold">Create your account</h1>
           <p className="text-sm text-slate-300 mt-1">Join the community and start sharing.</p>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit} aria-label="Create account form">
@@ -51,9 +51,9 @@ export default function RegisterPage() {
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                type="email"
+                type="email" autoComplete="email" inputMode="email" autoCapitalize="none" spellCheck={false}
                 required
-                className="mt-1 w-full rounded-md border border-white/10 bg-slate-900/60 px-3 py-2 text-white outline-none focus-visible"
+                className="vf-input mt-1"
               />
             </label>
             <label className="block text-sm">
@@ -61,9 +61,9 @@ export default function RegisterPage() {
               <input
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                type="password"
+                type="password" autoComplete="new-password"
                 required
-                className="mt-1 w-full rounded-md border border-white/10 bg-slate-900/60 px-3 py-2 text-white outline-none focus-visible"
+                className="vf-input mt-1"
               />
             </label>
 
@@ -77,13 +77,13 @@ export default function RegisterPage() {
               >
                 {isLoading ? "Creating..." : "Create account"}
               </button>
-              <a href="/login" className="text-sm text-slate-300 hover:text-white">
+              <Link href="/login" className="inline-flex min-h-[44px] items-center text-sm font-semibold text-[hsl(var(--accent))]">
                 Already have an account?
-              </a>
+              </Link>
             </div>
           </form>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
